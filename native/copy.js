@@ -1,7 +1,7 @@
 export const nativeCopy = {
   ko: {
     loading: '기기 데이터를 읽고 있어요…', retry: '다시 읽기',
-    phase: '앱 전환 6단계 · 개발용',
+    phase: '앱 전환 7단계 · 개발용',
     chooseArea: '지역을 직접 선택해 주세요',
     selectArea: '대한민국 → 서울 → 성수동 선택',
     changeArea: '다른 지역 선택',
@@ -65,7 +65,7 @@ export const nativeCopy = {
   },
   en: {
     loading: 'Reading device data…', retry: 'Reload data',
-    phase: 'Native app migration 6 · Development build',
+    phase: 'Native app migration 7 · Development build',
     chooseArea: 'Select an area manually',
     selectArea: 'Select South Korea → Seoul → Seongsu',
     changeArea: 'Change area',

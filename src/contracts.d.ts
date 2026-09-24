@@ -35,6 +35,18 @@ export interface ExperienceRecord {
 }
 export interface Page<T> { items: T[]; nextCursor: string | null }
 export interface ApiFailure { error: { code: string; message: string; requestId?: string } }
+export interface RemoteMutationOptions {
+  idempotencyKey: string; revision?: string; // revision required for PATCH/PUT/DELETE
+}
+export interface TripCreateRequest {
+  name: string; startDate: LocalDate; endDate: LocalDate; region: Region;
+} // no local visibility/account/record/translation fields
+export interface ScheduleItemCreateRequest {
+  date: LocalDate; startTime: LocalTime; unitId: string; unitVersionId: string;
+} // server resolves authoritative snapshot; client snapshot is never uploaded
+export interface ExperienceRecordPutRequest {
+  checkedIds: string[]; note: string; skipped: boolean;
+} // private owner endpoint proposal only; never sent by the disconnected client
 export interface DerivationReference {
   unitId: string; versionId: string; version: number; sourceLocale: string; title: string;
 }

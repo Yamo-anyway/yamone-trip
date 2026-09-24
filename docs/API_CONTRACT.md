@@ -1,12 +1,22 @@
-# Future API contract — proposal v0.5
+# Future API contract — proposal v0.6
 
 This is a handoff proposal, not a deployed API or a backend implementation. All UI data currently comes from local fixtures/storage. `src/api.js` is disabled by default and is not imported by the UI. `src/contracts.d.ts` defines matching data shapes without requiring a TypeScript build.
 
-## Native boundary — v0.8.0
+## Native boundary — v0.9.0
 
 The primary client is now the Android native app in `native/`; the web UI is a retained reference only. Native screens do not import `src/api.js` or any remote transport. `NativeRepository` uses an injected asynchronous key/value interface (`getItem`, `setItem`) with one application-scoped writer, validated reads and serialized transactions. Preferences must preserve all trips, snapshots and records. Failed/ambiguous writes require reload; parse/schema errors must never become empty-state writes. This is local sequencing, NOT an atomic multi-process or server revision protocol.
 
 The app uses `yamone-trip:native:state:v1`, distinct from browser storage. No automatic browser-data migration is performed. Backup import validates all content and presents an explicit preview/confirmation. AsyncStorage is unencrypted and must not contain credentials. The Android app configuration disables OS backup, but the merged release manifest and actual device behavior still require verification before any privacy/release claim. Browser CSP guards only the legacy browser reference; it is not the native network boundary. Do not add an endpoint, login, live translator, background synchronization or OTA update service during this migration.
+
+### M07 disconnected API and repository boundary
+
+`FutureApiClient` and `FutureRemoteRepository` are preparation modules only. They are not imported by either application, default to disabled, contain no backend origin and are checked statically for disconnection from the native/web entry points. Their tests use injected in-memory mock functions with reserved `.invalid` example origins. Passing those tests is not a live integration, authentication, network-security or server-behavior claim.
+
+Every proposed POST/PATCH/PUT/DELETE supplies an `Idempotency-Key`; PATCH/PUT/DELETE also supplies an explicit revision via `If-Match`. Missing or unsafe headers fail before transport, and the client makes exactly one attempt. The future caller may decide whether to retry a read after `RATE_LIMITED`, `SERVER_UNAVAILABLE`, `NETWORK_ERROR` or `REQUEST_TIMEOUT`; the adapter itself never retries a mutation. Tokens come from an injected memory callback only and are never read from or written to local state, AsyncStorage, backup files or source control.
+
+The client maps 401, 403, 404, 409/412, 429 and 5xx responses to stable codes and preserves only a syntactically safe request ID. It never reads an error response body, never exposes transport exception text, supports caller cancellation, and applies a bounded timeout. These client behaviors do not replace future server authorization, audit, rate-limit, idempotency-retention or revision rules.
+
+The prepared repository builds request DTOs from explicit allowlists. Trip creation accepts only name, dates and manual region. Add-item accepts only date/time and exact unit/version IDs, never a client snapshot. Schedule updates accept only the five personal schedule fields. Self-reported record payloads accept checked point IDs, note and skipped flag for a future owner-only endpoint. Local records, translation drafts, backups, client authorship/growth values and unrelated object fields are not forwarded implicitly. The active app continues to use `NativeRepository` only.
 
 ### M04 local authoring boundary
 
@@ -104,6 +114,6 @@ Growth promotion must be computed by the server from authorized, abuse-resistant
 
 1. Agree base URL, authentication, owner checks, revision/idempotency rules and schema compatibility.
 2. Add separate remote repository implementation behind the same client domain functions; keep explicit local/demo mode.
-3. Use mock responses to test timeout/abort/401/403/409/429/5xx, interrupted writes, no silent duplicate submissions.
+3. Reuse the M07 mock harness for timeout/abort/401/403/409/412/429/5xx, interrupted writes and no silent duplicate submissions; extend it for the approved backend schema without enabling production calls.
 4. Review consent, SDK traffic, privacy/retention and redaction flows; no claim that disabling GPS solves every legal obligation.
 5. Only then opt in to the real adapter and narrowly allow the approved origin in CSP `connect-src`; never loosen CSP globally.

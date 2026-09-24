@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.9.0 — 2026-09-25
+
+- M07: expanded the disconnected future API client into an injected mock-test boundary. It remains disabled by default, has no configured origin and is not imported by either the native app or retained web reference.
+- Future writes now require caller-provided idempotency keys, while PATCH/PUT/DELETE also require a revision (`If-Match`). No mutation is retried automatically. Authentication tokens remain memory callbacks and unsafe header/path/origin values fail before transport.
+- Added stable, non-leaking error categories for auth/permission/not-found/revision conflict/rate limit/server/network/invalid response plus explicit caller cancellation and request timeout handling. Mock response bodies and transport exception details are not surfaced.
+- Added a future remote repository with strict DTO allowlists for manual-region discovery, private trip creation, exact unit-version scheduling, personal schedule patches and self-reported records. Extra snapshots, local records, translation drafts and client authority fields are dropped; local/native repositories remain the active implementation.
+- Validation: `npm test` **113/113 passed**; `npm run check` passed; Android Metro/Hermes bundle passed (**613 modules**); offline Android source prebuild passed with v0.9.0/code 9 and source manifest inspection retained backup/OTA and location/media/advertising restrictions. `npm run test:ui` was attempted and blocked before launch by missing Chromium. APK assembly was attempted offline but the Gradle 9.0.0 distribution is unavailable and cannot be downloaded; Android SDK, adb and `javac` are absent. No live API, APK, merged manifest, native UI or device pass is claimed.
+
 ## 0.8.0 — 2026-09-25
 
 - M06: added device-only Korean/English translation variants bound to the exact original unit ID, version ID, original locale and experience-point IDs. Editing or deleting a translation never changes the original and never creates derivative lineage.

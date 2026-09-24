@@ -13,7 +13,7 @@ catalog.forEach(validateUnit);
 const app=await readFile('src/app.js','utf8');
 const sources=await Promise.all(files.filter(p=>p.startsWith('src/')).map(p=>readFile(p,'utf8')));
 assert(!sources.some(s=>/navigator\s*\.\s*geolocation|getCurrentPosition|watchPosition|<script[^>]+https?:/i.test(s)),'Device location or remote script found');
-assert(!/from\s*['"]\.\/api\.js/.test(app),'Future API must not be connected to live UI yet');
+assert(!/from\s*['"]\.\/(?:api|remote-repository)\.js/.test(app),'Future API must not be connected to web UI yet');
 const html=await readFile('index.html','utf8');
 assert(html.includes("connect-src 'none'"));
 for (const path of ['README.md','AGENTS.md','docs/PRODUCT.md','docs/PROGRESS.md','docs/API_CONTRACT.md','CHANGELOG.md']) assert((await readFile(path,'utf8')).trim());
