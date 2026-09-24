@@ -1,0 +1,11 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { LocalRepository, STORAGE_KEY } from '../src/repository.js';
+import { initialState } from '../src/domain.js';
+const memory=()=>{const data=new Map();return {getItem:k=>data.get(k)??null,setItem:(k,v)=>data.set(k,v)};};
+test('state persists and reloads',()=>{const storage=memory(),repo=new LocalRepository(storage),s=repo.load();s.preference='ko';repo.save(s);assert.equal(new LocalRepository(storage).load().preference,'ko');});
+test('corrupt storage is preserved and further writes are blocked',()=>{const storage=memory();storage.setItem(STORAGE_KEY,'{broken');const repo=new LocalRepository(storage);assert.throws(()=>repo.load(),/loadError/);assert.throws(()=>repo.save(initialState()));assert.equal(storage.getItem(STORAGE_KEY),'{broken');});
+test('future schema is preserved',()=>{const storage=memory();storage.setItem(STORAGE_KEY,JSON.stringify({...initialState(),schemaVersion:999}));const repo=new LocalRepository(storage);assert.throws(()=>repo.load());assert.throws(()=>repo.save(initialState()));assert.match(storage.getItem(STORAGE_KEY),/999/);});
+test('quota errors are surfaced rather than reported as saved',()=>{const repo=new LocalRepository({getItem:()=>null,setItem:()=>{throw new Error('quota');}});assert.throws(()=>repo.save(initialState()),/storageError/);});
+test('invalid state never reaches storage',()=>{const storage=memory(),repo=new LocalRepository(storage);assert.throws(()=>repo.save({}));assert.equal(storage.getItem(STORAGE_KEY),null);});
+test('stale tab cannot overwrite a previously saved tab',()=>{const storage=memory(),a=new LocalRepository(storage),b=new LocalRepository(storage);const first=a.load(),second=b.load();first.preference='ko';a.save(first);second.preference='en';assert.throws(()=>b.save(second),/storageError/);assert.equal(new LocalRepository(storage).load().preference,'ko');});

@@ -1,0 +1,26 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { catalog } from '../src/catalog.js';
+import { dateRange, validDate, createTrip, addItem, findConflicts, createRecord, filterUnits, validateUnit, assertState, initialState } from '../src/domain.js';
+import { resolveLocale, textFor, costLabel, dictionaries } from '../src/i18n.js';
+const trip=()=>createTrip({name:' Seoul ',startDate:'2026-10-01',endDate:'2026-10-03',region:catalog[0].region},'trip');
+const add=(t=trip(),id='one',time='09:00',date='2026-10-01')=>addItem(t,catalog[0],{date,startTime:time},id);
+test('calendar dates validate without timezone shifting',()=>{
+  assert.equal(validDate('2026-02-30'),false); assert.equal(validDate('2028-02-29'),true);
+  assert.deepEqual(dateRange('2026-12-31','2027-01-02'),['2026-12-31','2027-01-01','2027-01-02']);
+});
+test('trip range rejects reverse and excessive periods',()=>{assert.throws(()=>dateRange('2026-10-03','2026-10-01'));assert.throws(()=>dateRange('2026-01-01','2026-12-31'));});
+test('private trip validates name',()=>{assert.equal(trip().name,'Seoul');assert.equal(trip().visibility,'private');assert.throws(()=>createTrip({...trip(),name:' '},'x'));});
+test('unit snapshots are immutable copies',()=>{const unit=structuredClone(catalog[0]);const t=addItem(trip(),unit,{date:'2026-10-01',startTime:'09:00'},'one');unit.title.ko='Changed';assert.notEqual(t.items[0].snapshot.title.ko,unit.title.ko);assert.equal(trip().items.length,0);});
+test('schedule rejects dates outside trip and midnight overrun',()=>{assert.throws(()=>add(trip(),'a','23:45'));assert.throws(()=>add(trip(),'a','24:00'));assert.throws(()=>add(trip(),'a','09:00','2026-10-05'));assert.equal(add(trip(),'a','23:30').items.length,1);});
+test('overlap detection excludes adjacent and different-day items',()=>{let t=add();t=add(t,'two','09:30');t=add(t,'three','09:15','2026-10-02');assert.deepEqual(findConflicts(t.items),[]);t=add(t,'four','09:15');assert.deepEqual(findConflicts(t.items),[['one','four'],['two','four']]);});
+test('unit points are constrained to 1–5 with unique stable ids',()=>{for(const points of [[],Array(6).fill(catalog[0].points[0]),[catalog[0].points[0],catalog[0].points[0]]])assert.throws(()=>validateUnit({...catalog[0],points}));catalog.forEach(validateUnit);});
+test('record transitions are determined by checked points',()=>{const item=add().items[0];assert.equal(createRecord(item,[],'').status,'planned');assert.equal(createRecord(item,['walk'],'memo').status,'partial');const completed=createRecord(item,item.snapshot.points.map(p=>p.id),'');assert.equal(completed.status,'complete');assert.equal(completed.verification,'self_reported');assert.equal(createRecord(item,[],'',true).status,'skipped');});
+test('record rejects unknown, duplicate points and oversized notes',()=>{const item=add().items[0];for(const ids of [['bad'],['walk','walk']])assert.throws(()=>createRecord(item,ids,''));assert.throws(()=>createRecord(item,[],'x'.repeat(2001)));assert.throws(()=>createRecord(item,['walk'],'',true));});
+test('filters combine region, time, category and price',()=>{assert.equal(filterUnits(catalog,{maxMinutes:30,maxCost:0}).length,3);assert.equal(filterUnits(catalog,{category:'cafe',maxCost:0}).length,0);assert.equal(filterUnits(catalog,{region:{district:'missing'}}).length,0);});
+test('search includes both languages regardless of UI language',()=>{assert.equal(filterUnits(catalog,{query:'forest'}).length,1);assert.equal(filterUnits(catalog,{query:'서울숲'}).length,1);});
+test('state validates snapshot references, duplicate ids and record ownership',()=>{const s=initialState();s.trips=[add()];assertState(s);s.trips[0].items[0].unitVersionId='bad';assert.throws(()=>assertState(s));s.trips=[add()];s.trips.push(structuredClone(s.trips[0]));assert.throws(()=>assertState(s));});
+test('state rejects inconsistent derived record status',()=>{const s=initialState();s.trips=[add()];s.records.one=createRecord(s.trips[0].items[0],['walk'],'');assertState(s);s.records.one.status='complete';assert.throws(()=>assertState(s));});
+test('locale supports explicit settings and safe device fallback',()=>{assert.equal(resolveLocale('auto','ko-KR'),'ko');assert.equal(resolveLocale('en','ko-KR'),'en');assert.equal(resolveLocale('auto','fr-FR'),'en');assert.deepEqual(Object.keys(dictionaries.ko).sort(),Object.keys(dictionaries.en).sort());});
+test('content language fallback and zero cost',()=>{assert.equal(textFor({ko:'원문'},'en','ko'),'원문');assert.equal(costLabel({amount:0,currency:'KRW'},'en'),'Free');});
+test('malformed display fields cannot survive a storage load',()=>{for(const patch of [{cost:null},{region:null},{tip:42},{category:'unknown'},{version:0}]) {const s=initialState();s.trips=[add()];Object.assign(s.trips[0].items[0].snapshot,patch);assert.throws(()=>assertState(s));}});

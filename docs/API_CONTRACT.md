@@ -1,0 +1,54 @@
+# Future API contract — proposal v0.1
+
+This is a handoff proposal, not a deployed API or a backend implementation. All UI data currently comes from local fixtures/storage. `src/api.js` is disabled by default and is not imported by the UI. `src/contracts.d.ts` defines matching data shapes without requiring a TypeScript build.
+
+## Common conventions
+
+- Version prefix `/v1`; HTTPS origin configured only after the user provides an approved backend/auth scheme. Do not put credentials in git or localStorage.
+- The prepared adapter accepts an in-memory token callback as a placeholder. This does **not** choose final OAuth/cookie/login policy. Server authentication, ownership authorization, CORS and CSRF design remain backend decisions.
+- JSON responses; list envelope `{items: [], nextCursor: null}`. Errors `{error: {code, message, requestId?}}`. Do not display raw server exception contents.
+- API must authorize every trip/record operation against the authenticated owner. Client-side validation is not a security boundary. Never trust a submitted author ID, growth value or visit verification.
+- Writes use caller-generated `Idempotency-Key`; backend deduplicates within a documented retention period (to be decided). No implicit mutation retries. Concurrency uses ETag/If-Match or a server revision (to be agreed), with 409/412 reconciliation.
+- `YYYY-MM-DD` calendar dates and `HH:mm` destination schedule times; do not derive device location or timezone. Trip destination timezone selection is a future explicit field/decision.
+- Prices are numeric amounts + ISO currency; do not mix currencies in totals without explicit conversion/source policy.
+- No latitude/longitude, current origin, GPS, IP-derived area or movement-history fields. Manual region identifiers and public destination descriptions only.
+
+## Initial endpoint proposal
+
+| Method / path | Request | Response / rule |
+| --- | --- | --- |
+| GET `/v1/units` | query: country, city, district, q, locale (ko/en), maxMinutes, category, maxCost, currency, cursor | `Page<UnitVersion>`; public content only; translation fallback clearly labeled |
+| GET `/v1/units/{unitId}/versions/{versionId}` | explicit identifiers | Exact immutable `UnitVersion`; redaction/takedown rules may override historic availability |
+| POST `/v1/trips` | name, startDate, endDate, region | 201 `Trip`, private by default |
+| GET `/v1/trips` | cursor | Owner-only `Page<Trip>` |
+| POST `/v1/trips/{tripId}/items` | date, startTime, unitId, unitVersionId | 201 `ScheduleItem`; backend resolves authoritative version snapshot; never trust client snapshot as published content |
+| PATCH `/v1/trips/{tripId}/items/{itemId}` | approved editable schedule fields + revision | Updated item; reject stale update and out-of-range/cross-midnight schedule |
+| DELETE `/v1/trips/{tripId}/items/{itemId}` | revision | 204; handle associated private records consistently |
+| PUT `/v1/trips/{tripId}/items/{itemId}/record` | checkedIds, note, skipped flag, revision | `ExperienceRecord`; server derives status; 1–5 matching point IDs; self-reported only |
+
+Example add-item request (client does not make this call today):
+
+```json
+{
+  "date": "2026-10-01",
+  "startTime": "09:00",
+  "unitId": "forest-walk",
+  "unitVersionId": "forest-walk-v1"
+}
+```
+
+Expected error families: 400/422 validation, 401 reauthenticate, 403 owner/permission mismatch, 404 unavailable, 409/412 concurrency, 429 rate limit, 5xx retryable read failure. Preserve unsaved client input on failures; do not claim that a local draft has been publicly saved.
+
+## Later content endpoints — design slots, not ready implementations
+
+Author draft/create/edit version, improvement proposal, attributed derivative, and translation request/read will be specified with those client milestones. A derivative gets a new unit ID and explicit source unit/version attribution. A translation shares the original unit/version and maps stable point IDs; it never becomes a new derivative. Preserve original-language text. Machine translation must be labeled and have an original toggle. Only public unit text should enter translation by default; exclude private trip records and account data.
+
+Growth promotion must be computed by the server from authorized, abuse-resistant events. Do not trust client completion as proof of attendance; no thresholds beyond confirmed product rules may be invented. Rights/privacy removals must propagate to snapshots and caches as appropriate, despite ordinary version immutability.
+
+## Connection checklist (requires user/backend decisions)
+
+1. Agree base URL, authentication, owner checks, revision/idempotency rules and schema compatibility.
+2. Add separate remote repository implementation behind the same client domain functions; keep explicit local/demo mode.
+3. Use mock responses to test timeout/abort/401/403/409/429/5xx, interrupted writes, no silent duplicate submissions.
+4. Review consent, SDK traffic, privacy/retention and redaction flows; no claim that disabling GPS solves every legal obligation.
+5. Only then opt in to the real adapter and narrowly allow the approved origin in CSP `connect-src`; never loosen CSP globally.

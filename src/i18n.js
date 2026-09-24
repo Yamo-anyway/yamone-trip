@@ -1,0 +1,88 @@
+export const dictionaries = {
+  ko: {
+    brand:'야모네 트립', tagline:'작은 경험을 모아, 나다운 여행', skip:'본문으로 건너뛰기',
+    discover:'유닛 찾기', trips:'내 여행', mine:'내 유닛', settings:'설정',
+    local:'로컬 데모', demo:'장소·비용은 예시입니다. 서버 연결 및 실제 공개 기능은 없습니다.',
+    intro:'이번엔 어떤 경험을 할까요?', sub:'지역을 직접 선택하고, 나에게 맞는 작은 경험을 담아보세요.',
+    country:'국가', city:'도시', region:'지역', korea:'대한민국', seoul:'서울', seongsu:'성수동',
+    areaNote:'GPS 없이 선택한 지역으로 검색해요.', search:'장소 또는 하고 싶은 경험',
+    duration:'소요시간', allTimes:'전체 시간', thirty:'30분 이하', sixty:'1시간 이하',
+    category:'종류', all:'전체', walk:'산책', cafe:'카페', sightseeing:'관광',
+    budget:'비용', allCosts:'전체 비용', freeOnly:'무료만', underTen:'10,000원 이하',
+    results:'성수동에서 할 수 있는 경험', resultsCount:'개의 경험', empty:'조건에 맞는 경험이 없어요.', clear:'필터 초기화',
+    minutes:'분', free:'무료', estimated:'약', onFoot:'도보', points:'경험 포인트',
+    sprout:'새싹', seed:'씨앗', originalExperience:'직접 경험', aiDraft:'AI 초안 · 미검증',
+    detail:'유닛 상세', back:'뒤로', how:'이렇게 경험해 보세요', tip:'알아두면 좋아요', author:'작성자',
+    translation:'번역본 · 데모 번역', original:'원문', viewOriginal:'원문 보기', viewTranslated:'번역 보기',
+    add:'내 여행에 담기', chooseTrip:'담을 여행', day:'날짜', start:'시작 시각', save:'저장', cancel:'취소',
+    noTrip:'먼저 여행을 만들어 주세요.', newTrip:'새 여행 만들기', tripName:'여행 이름',
+    startDate:'시작일', endDate:'종료일', create:'여행 만들기', myTripsIntro:'경험을 모으면 하루가 완성돼요.',
+    private:'나만 보는 일정 · 이 기기에 저장', noTrips:'아직 여행이 없어요.', noItems:'이 날짜에 유닛을 담아보세요.',
+    addMore:'유닛 더 담기', units:'유닛', conflict:'시간이 겹치는 일정이 있어요. 시작 시각을 조정해 주세요.',
+    laterMovement:'이동·휴식 시간은 별도로 확인해 주세요.', experience:'경험 시작', remove:'일정에서 빼기', removeConfirm:'이 일정 항목을 삭제할까요?',
+    todayExperience:'나의 경험', checklist:'직접 경험한 항목을 체크해 주세요.', note:'나만의 메모', noteHint:'다음에 기억하고 싶은 점을 남겨보세요.',
+    saveRecord:'기록 저장', complete:'완료', partial:'부분 완료', skipped:'건너뜀', planned:'예정',
+    selfReported:'완료 기록은 직접 체크한 내용이며 방문 인증이 아닙니다.', saved:'이 기기에 저장했어요.',
+    writeLater:'유닛 작성·보완·파생 기능은 다음 단계에서 추가합니다.', myUnitsSub:'나의 경험을 다음 여행자에게',
+    language:'앱 언어', automatic:'기기 설정 따르기', contentLanguage:'콘텐츠는 앱 언어로 표시하며 상세에서 원문을 볼 수 있어요.',
+    privacyTitle:'기기 위치를 사용하지 않아요', privacyBody:'위치 권한·현재 위치·이동경로를 사용하지 않습니다. 지역은 직접 선택합니다.',
+    storageTitle:'이 기기에만 저장', storageBody:'브라우저 데이터를 지우거나 기기를 바꾸면 기록을 가져올 수 없습니다. 백업·복원 기능은 후속 단계입니다.',
+    serverTitle:'서버 미연결', serverBody:'회원가입·동기화·AI 번역·다른 사람에게 공개는 아직 동작하지 않습니다.',
+    storageError:'저장에 실패했습니다. 변경 내용이 보존되지 않았습니다. 브라우저 저장 공간을 확인해 주세요.',
+    loadError:'저장된 데이터를 읽을 수 없습니다. 기존 데이터는 덮어쓰지 않았습니다. 백업 후 복구가 필요합니다.',
+    invalid:'입력 내용을 확인해 주세요.', invalidTrip:'여행 이름과 날짜를 확인해 주세요. 종료일은 시작일 이후이며 최대 90일입니다.',
+    invalidSchedule:'여행 날짜와 시작 시각을 확인해 주세요. 일정은 자정을 넘길 수 없습니다.',
+    localDraft:'임시 초안', version:'버전', close:'닫기', titleTrips:'나의 여행', countDone:'완료한 포인트',
+    savedRecord:'경험 기록을 저장했어요.', selectTrip:'여행 선택', minutesUnit:'분',
+  },
+  en: {
+    brand:'Yamone Trip', tagline:'Small experiences, your kind of journey', skip:'Skip to content',
+    discover:'Find units', trips:'My trips', mine:'My units', settings:'Settings',
+    local:'Local demo', demo:'Places and prices are examples. No server connection or public sharing.',
+    intro:'What will you experience next?', sub:'Choose an area and collect small experiences that feel like you.',
+    country:'Country', city:'City', region:'Area', korea:'South Korea', seoul:'Seoul', seongsu:'Seongsu',
+    areaNote:'Search your selected area, without GPS.', search:'Place or experience',
+    duration:'Duration', allTimes:'Any duration', thirty:'Up to 30 min', sixty:'Up to 1 hour',
+    category:'Category', all:'All', walk:'Walk', cafe:'Café', sightseeing:'Sightseeing',
+    budget:'Cost', allCosts:'Any cost', freeOnly:'Free only', underTen:'Up to ₩10,000',
+    results:'Experiences in Seongsu', resultsCount:'experiences', empty:'No experiences match these filters.', clear:'Reset filters',
+    minutes:'min', free:'Free', estimated:'Approx.', onFoot:'On foot', points:'Experience points',
+    sprout:'Sprout', seed:'Seed', originalExperience:'First-hand', aiDraft:'AI draft · Unverified',
+    detail:'Unit details', back:'Back', how:'Try these experiences', tip:'Good to know', author:'By',
+    translation:'Translated · Demo translation', original:'Original', viewOriginal:'View original', viewTranslated:'View translation',
+    add:'Add to my trip', chooseTrip:'Choose a trip', day:'Date', start:'Start time', save:'Save', cancel:'Cancel',
+    noTrip:'Create a trip first.', newTrip:'Create a trip', tripName:'Trip name',
+    startDate:'Start date', endDate:'End date', create:'Create trip', myTripsIntro:'Build your day, one experience at a time.',
+    private:'Private itinerary · Saved on this device', noTrips:'No trips yet.', noItems:'Add an experience to this day.',
+    addMore:'Find more units', units:'units', conflict:'Some activities overlap. Adjust their start times.',
+    laterMovement:'Allow additional time for travel and breaks.', experience:'Start experience', remove:'Remove from trip', removeConfirm:'Remove this activity from the trip?',
+    todayExperience:'My experience', checklist:'Check the points you have experienced.', note:'Personal note', noteHint:'What would you like to remember?',
+    saveRecord:'Save record', complete:'Complete', partial:'Partial', skipped:'Skipped', planned:'Planned',
+    selfReported:'Completion is self-reported, not proof of a visit.', saved:'Saved on this device.',
+    writeLater:'Authoring, improvement proposals and attributed derivatives are coming in a later milestone.', myUnitsSub:'Share your experience with the next traveler',
+    language:'App language', automatic:'Follow device language', contentLanguage:'Content follows the app language. You can view the original in unit details.',
+    privacyTitle:'No device location', privacyBody:'No location permission, current location or route tracking. Select the area yourself.',
+    storageTitle:'Saved only on this device', storageBody:'Clearing browser data or changing devices can lose your records. Backup and restore will be added in a later milestone.',
+    serverTitle:'Server not connected', serverBody:'Sign-in, sync, AI translation and publishing to others are not active.',
+    storageError:'Could not save. Your changes have not been preserved. Check browser storage.',
+    loadError:'Could not read saved data. Existing data has not been overwritten. Back up the data before recovery.',
+    invalid:'Please check your input.', invalidTrip:'Check the trip name and dates. The end must not precede the start; maximum 90 days.',
+    invalidSchedule:'Check the trip date and start time. Activities cannot cross midnight.',
+    localDraft:'Local draft', version:'Version', close:'Close', titleTrips:'Your trips', countDone:'Points completed',
+    savedRecord:'Experience record saved.', selectTrip:'Choose trip', minutesUnit:'min',
+  },
+};
+
+export function resolveLocale(preference, device = 'en') {
+  if (preference === 'ko' || preference === 'en') return preference;
+  return /^ko(?:-|$)/i.test(device) ? 'ko' : 'en';
+}
+export function textFor(value, locale, sourceLocale = 'ko') {
+  return value[locale] ?? value[sourceLocale] ?? Object.values(value)[0] ?? '';
+}
+export function costLabel(cost, locale) {
+  if (cost.amount === 0) return dictionaries[locale].free;
+  return new Intl.NumberFormat(locale === 'ko' ? 'ko-KR' : 'en-US', {
+    style:'currency', currency:cost.currency, maximumFractionDigits:0,
+  }).format(cost.amount);
+}
