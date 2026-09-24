@@ -2,11 +2,17 @@
 
 This is a handoff proposal, not a deployed API or a backend implementation. All UI data currently comes from local fixtures/storage. `src/api.js` is disabled by default and is not imported by the UI. `src/contracts.d.ts` defines matching data shapes without requiring a TypeScript build.
 
-## Native boundary — v0.10.0
+## Native boundary — v0.11.0
 
 The primary client is now the Android native app in `native/`; the web UI is a retained reference only. Native screens do not import `src/api.js` or any remote transport. `NativeRepository` uses an injected asynchronous key/value interface (`getItem`, `setItem`) with one application-scoped writer, validated reads and serialized transactions. Preferences must preserve all trips, snapshots and records. Failed/ambiguous writes require reload; parse/schema errors must never become empty-state writes. This is local sequencing, NOT an atomic multi-process or server revision protocol.
 
 The app uses `yamone-trip:native:state:v1`, distinct from browser storage. No automatic browser-data migration is performed. Backup import validates all content and presents an explicit preview/confirmation. AsyncStorage is unencrypted and must not contain credentials. The Android app configuration disables OS backup, but the merged release manifest and actual device behavior still require verification before any privacy/release claim. Browser CSP guards only the legacy browser reference; it is not the native network boundary. Do not add an endpoint, login, live translator, background synchronization or OTA update service during this migration.
+
+### M10 handoff and release boundary
+
+`docs/release-gates.json` is the machine-readable handoff state and `docs/CLIENT_HANDOFF.md` is its operator checklist. Passing `npm run check` means the server-free client source, documented boundaries and versioned gate inventory are internally consistent. It is deliberately labeled `client_handoff_complete_release_blocked`; it is not an APK, device, backend, security, legal or release approval.
+
+The remaining gates require an Android build/device environment, an approved backend/auth contract, final application identity/signing/distribution decisions, product/legal decisions and an SDK/data-flow review. Live API, production authentication, photo upload, device location, analytics/ad SDK and store submission stay prohibited until their applicable gates and explicit authority exist. The disabled M07 adapter and mock DTOs are the only server preparation in this repository.
 
 ### M09 accessibility and data-loss boundary
 

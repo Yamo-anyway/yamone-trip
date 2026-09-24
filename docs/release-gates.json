@@ -1,0 +1,33 @@
+{
+  "schemaVersion": 1,
+  "appVersion": "0.11.0",
+  "status": "client_handoff_complete_release_blocked",
+  "completed": [
+    "native-discovery-settings",
+    "private-trip-schedule-records",
+    "validated-local-backup",
+    "immutable-local-authoring",
+    "attributed-derivatives",
+    "original-preserving-translations",
+    "disconnected-api-boundary",
+    "accessibility-source-guards",
+    "data-loss-regressions"
+  ],
+  "pending": [
+    {"id": "android-toolchain-apk", "owner": "local-build-environment", "state": "blocked"},
+    {"id": "device-interaction-smoke", "owner": "android-device", "state": "blocked"},
+    {"id": "backend-integration", "owner": "server-and-user-decisions", "state": "blocked"},
+    {"id": "release-identity-signing-distribution", "owner": "user-decisions-and-credentials", "state": "blocked"},
+    {"id": "product-policy-legal", "owner": "user-and-legal-review", "state": "blocked"},
+    {"id": "sdk-data-flow-review", "owner": "release-review", "state": "blocked"},
+    {"id": "photo-metadata-pipeline", "owner": "future-client-work", "state": "blocked"}
+  ],
+  "forbiddenUntilApproved": [
+    "live-api",
+    "production-authentication",
+    "photo-upload",
+    "device-location",
+    "analytics-or-ad-sdk",
+    "store-submission"
+  ]
+}

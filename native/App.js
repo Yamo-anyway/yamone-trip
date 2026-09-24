@@ -24,7 +24,7 @@ import { nativeCopy } from './copy.js';
 // No remote adapter, browser, map, upload or location module is imported here.
 const repository = new NativeRepository(AsyncStorage);
 const demoRegion = {country:'KR', city:'seoul', district:'seongsu'};
-const appVersion = '0.10.0';
+const appVersion = '0.11.0';
 
 function Text({style, ...props}) {
   return <NativeText {...props} allowFontScaling={true} style={[{color:'#182d25'}, style]} />;

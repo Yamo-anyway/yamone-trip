@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.11.0 — 2026-09-25
+
+- M10: added a reproducible Korean client handoff covering clean install checks, local Android debug build, merged-manifest inspection and 10 native smoke scenarios for ko/en, persistence, version snapshots, backup, back/keyboard, 200% font scaling, TalkBack, permissions and traffic.
+- Added a machine-readable release-gate manifest with the explicit state `client_handoff_complete_release_blocked`. It separates nine completed safe client boundaries from seven blocked Android-device/server/signing/product/legal/photo gates and retains prohibitions on live API, photo upload, location, analytics/ad SDK and store submission.
+- Added `check-release.mjs` to `npm run check`. It enforces version parity, completed/pending gate IDs, prohibited actions and required handoff instructions, while stating that a passing source gate is not release approval.
+- Validation: `npm test` **117/117 passed**; `npm run check` passed (**24 JavaScript files** plus native and release-gate checks); Android Metro/Hermes bundle passed (**614 modules**); offline Android source prebuild passed with v0.11.0/code 11 and source manifest inspection retained backup/OTA and location/media/advertising restrictions. `npm run test:ui` was attempted and blocked before launch by missing Chromium. APK assembly was attempted offline but the Gradle 9.0.0 distribution is unavailable and cannot be downloaded; Android SDK, adb, system Gradle and `javac` are absent. No APK, merged manifest, TalkBack, visual, keyboard, traffic or device pass is claimed.
+
 ## 0.10.0 — 2026-09-25
 
 - M09: added semantic checkbox, radio and tab roles with checked/selected/disabled state, explicit Korean/English accessibility hints, scalable native text/input and a wrapping two-row bottom navigation for narrow screens and enlarged text.

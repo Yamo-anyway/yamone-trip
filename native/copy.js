@@ -1,7 +1,7 @@
 export const nativeCopy = {
   ko: {
     loading: '기기 데이터를 읽고 있어요…', retry: '다시 읽기',
-    phase: '앱 전환 8단계 · 개발용',
+    phase: '클라이언트 인계 단계 · 개발용',
     navigationHint: '탭을 전환합니다. 작성 중인 변경은 나가기 전에 확인합니다.',
     checklistHint: '두 번 탭하여 직접 완료 상태를 바꿉니다.',
     chooseArea: '지역을 직접 선택해 주세요',
@@ -67,7 +67,7 @@ export const nativeCopy = {
   },
   en: {
     loading: 'Reading device data…', retry: 'Reload data',
-    phase: 'Native app migration 8 · Development build',
+    phase: 'Client handoff · Development build',
     navigationHint: 'Switches tabs. Unsaved edits are confirmed before leaving.',
     checklistHint: 'Double tap to change your self-reported completion state.',
     chooseArea: 'Select an area manually',
