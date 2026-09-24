@@ -33,8 +33,8 @@ test('native empty load does not create or claim an account, or write storage', 
 test('native schema-v1 load migrates only in memory until an explicit write', async () => {
   const old=JSON.stringify({schemaVersion:1,preference:'ko',trips:[],records:{}});
   const disk=storage(old), repo=new NativeRepository(disk); const loaded=await repo.load();
-  assert.equal(loaded.schemaVersion,3); assert.deepEqual(loaded.localUnits,[]); assert.deepEqual(loaded.improvementProposals,[]); assert.equal(disk.raw,old); assert.equal(disk.writes,0);
-  await repo.transact(state=>state); assert.equal(JSON.parse(disk.raw).schemaVersion,3); assert.equal(disk.writes,1);
+  assert.equal(loaded.schemaVersion,4); assert.deepEqual(loaded.localUnits,[]); assert.deepEqual(loaded.improvementProposals,[]); assert.deepEqual(loaded.translationVariants,[]); assert.equal(disk.raw,old); assert.equal(disk.writes,0);
+  await repo.transact(state=>state); assert.equal(JSON.parse(disk.raw).schemaVersion,4); assert.equal(disk.writes,1);
 });
 test('native load is required before any write', async () => {
   const disk = storage(), repo = new NativeRepository(disk);

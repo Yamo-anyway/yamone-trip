@@ -43,7 +43,9 @@ export interface ImprovementProposal {
   source: DerivationReference; suggestion: string;
 }
 export interface TranslationVariant {
-  unitId: string; versionId: string; locale: UiLocale;
-  method: 'human' | 'machine'; reviewed: boolean;
-  title: string; description: string; tip: string; points: { id: string; text: string }[];
+  unitId: string; versionId: string; sourceLocale: string; locale: UiLocale;
+  method: 'manual' | 'machine';
+  reviewStatus: 'draft' | 'machine_unreviewed' | 'user_reviewed' | 'needs_review';
+  title: string; description: string; place: string; tip: string;
+  points: { id: string; text: string }[]; // exact source point IDs and order
 }

@@ -1,8 +1,8 @@
-# Future API contract — proposal v0.4
+# Future API contract — proposal v0.5
 
 This is a handoff proposal, not a deployed API or a backend implementation. All UI data currently comes from local fixtures/storage. `src/api.js` is disabled by default and is not imported by the UI. `src/contracts.d.ts` defines matching data shapes without requiring a TypeScript build.
 
-## Native boundary — v0.7.0
+## Native boundary — v0.8.0
 
 The primary client is now the Android native app in `native/`; the web UI is a retained reference only. Native screens do not import `src/api.js` or any remote transport. `NativeRepository` uses an injected asynchronous key/value interface (`getItem`, `setItem`) with one application-scoped writer, validated reads and serialized transactions. Preferences must preserve all trips, snapshots and records. Failed/ambiguous writes require reload; parse/schema errors must never become empty-state writes. This is local sequencing, NOT an atomic multi-process or server revision protocol.
 
@@ -23,6 +23,14 @@ An improvement proposal is a separate private local object with its own opaque I
 An attributed derivative creates a new local unit ID, new version ID and new experience-point IDs. Its immutable version stores the exact immediate source reference above. Later versions of that derivative must keep the same reference. The source can be a demo or local version; it need not remain mutable or available for the attribution to display. This local reference is not proof of ownership or permission, and future rights/takedown rules may require redaction.
 
 A translation must never populate `derivedFrom`: it keeps the original unit/version identity and maps the same point IDs. No improvement or derivative endpoint is active. Proposed future writes require authentication, ownership/permission checks, idempotency and revision conflict handling; client-supplied author, growth and delivery status are never authoritative.
+
+### M06 local translation boundary
+
+`TranslationVariant` is keyed by exact `unitId`, `versionId` and target `locale`. It also records the original locale and repeats every source experience-point ID in the same order. Title, description, public place guidance, tip and all 1–5 experience points are required to remain attached to that immutable version; a translation does not change the unit/version identity, create `derivedFrom`, alter an itinerary snapshot or carry private notes.
+
+The active editor creates only `method: manual` translations with `draft` or `user_reviewed` status and stores them on this device. “User reviewed” means only that the local user marked the text; it is not administrator verification, factual validation or publication. The model reserves `method: machine` with `machine_unreviewed`, and `needs_review` for a future backend/import workflow. Machine content must remain visibly labeled and may never be silently upgraded to reviewed.
+
+Original content is always preserved and available through an original/translation toggle. Translation lookup is exact-version: changing the source version does not copy an earlier translation forward. A future server may return or accept the matching `TranslationVariant` shape, but it must issue authoritative revisions, check write permission, require idempotency/concurrency controls and mark a translation `needs_review` when the source revision changes. It must not infer a translation request from private trips, schedules, completion records or personal notes. There is no endpoint, translator SDK or live call in this client.
 
 ### M03 backup/import boundary
 
@@ -88,7 +96,7 @@ Expected error families: 400/422 validation, 401 reauthenticate, 403 owner/permi
 
 ## Later content endpoints — design slots, not ready implementations
 
-Translation request/read will be specified with that client milestone. Local author/version and M05 lineage behavior are defined above but no endpoint is active. A translation shares the original unit/version and maps stable point IDs; it never becomes a new derivative. Preserve original-language text. Machine translation must be labeled and have an original toggle. Only public unit text should enter translation by default; exclude private trip records and account data.
+Translation storage and review-state semantics are defined in M06 above, but no endpoint is active. A future translation request/read API may handle public unit text only after authentication, authorization, revision and privacy decisions are agreed. It must exclude private trip records, schedules, personal notes and account data by default.
 
 Growth promotion must be computed by the server from authorized, abuse-resistant events. Do not trust client completion as proof of attendance; no thresholds beyond confirmed product rules may be invented. Rights/privacy removals must propagate to snapshots and caches as appropriate, despite ordinary version immutability.
 

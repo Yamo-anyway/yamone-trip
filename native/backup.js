@@ -88,6 +88,11 @@ export function canonicalState(value) {
     improvementProposals:current.improvementProposals.map(proposal=>({
       id:proposal.id,visibility:'private',status:'local_only',source:cleanReference(proposal.source),suggestion:proposal.suggestion,
     })),
+    translationVariants:current.translationVariants.map(variant=>({
+      unitId:variant.unitId,versionId:variant.versionId,sourceLocale:variant.sourceLocale,locale:variant.locale,
+      method:variant.method,reviewStatus:variant.reviewStatus,title:variant.title,description:variant.description,
+      place:variant.place,tip:variant.tip,points:variant.points.map(point=>({id:point.id,text:point.text})),
+    })),
   };
   assertState(state);
   return state;
@@ -119,7 +124,7 @@ export function backupPreview(state, metadata = {}) {
     appVersion:metadata.appVersion ?? null, preference:state.preference,
     tripCount:state.trips.length, itemCount, recordCount:Object.keys(state.records).length,
     localUnitCount:state.localUnits.length, draftCount:state.unitDrafts.length,
-    improvementCount:state.improvementProposals.length,
+    improvementCount:state.improvementProposals.length, translationCount:state.translationVariants.length,
   };
 }
 
@@ -136,7 +141,7 @@ export function parseBackup(text) {
       return {state:copy(state), preview:backupPreview(state, {createdAt:value.createdAt, appVersion:value.appVersion})};
     }
     // Explicit import path for raw local/browser state. Schema v1 migrates in memory.
-    if ([1,2,SCHEMA_VERSION].includes(value?.schemaVersion)) {
+    if ([1,2,3,SCHEMA_VERSION].includes(value?.schemaVersion)) {
       const state = canonicalState(value);
       const source=value.schemaVersion===1?'legacy_raw_v1':`raw_state_v${value.schemaVersion}`;
       return {state:copy(state), preview:backupPreview(state, {source})};

@@ -5,6 +5,7 @@ import { addItem, createRecord, createTrip, initialState } from '../src/domain.j
 import { BACKUP_FORMAT, MAX_BACKUP_BYTES, canonicalState, createBackup, parseBackup } from '../native/backup.js';
 import { draftFromLatest, makeUnitDraft, publishUnitDraft, saveUnitDraft } from '../native/authoring.js';
 import { derivativeDraftFrom, makeImprovementProposal, saveImprovementProposal } from '../native/lineage.js';
+import { makeTranslationVariant, saveTranslationVariant } from '../native/translations.js';
 
 function populatedState() {
   let trip = createTrip({
@@ -17,7 +18,7 @@ function populatedState() {
   return {...initialState(), preference:'en', trips:[trip], records:{'backup-item':record}};
 }
 
-const options = {createdAt:'2026-09-24T15:30:00.000Z', appVersion:'0.5.0'};
+const options = {createdAt:'2026-09-24T15:30:00.000Z', appVersion:'0.8.0'};
 
 test('native backup round trip preserves private trips, exact snapshots and notes', () => {
   const state = populatedState();
@@ -25,7 +26,7 @@ test('native backup round trip preserves private trips, exact snapshots and note
   assert.deepEqual(parsed.state, canonicalState(state));
   assert.equal(parsed.state.trips[0].items[0].unitVersionId, catalog[0].versionId);
   assert.equal(parsed.state.records['backup-item'].note, 'Synthetic private note');
-  assert.deepEqual(parsed.preview, {source:'backup_v1', ...options, preference:'en', tripCount:1, itemCount:1, recordCount:1, localUnitCount:0, draftCount:0, improvementCount:0});
+  assert.deepEqual(parsed.preview, {source:'backup_v1', ...options, preference:'en', tripCount:1, itemCount:1, recordCount:1, localUnitCount:0, draftCount:0, improvementCount:0, translationCount:0});
 });
 
 test('backup envelope is versioned and contains no account, sync or publication claim', () => {
@@ -36,22 +37,23 @@ test('backup envelope is versioned and contains no account, sync or publication 
 
 test('legacy raw schema-v1 import is explicit and gets a privacy-safe preview', () => {
   const current = populatedState();
-  const {localUnits,unitDrafts,...state}=current; state.schemaVersion=1;
+  const {localUnits,unitDrafts,improvementProposals,translationVariants,...state}=current; state.schemaVersion=1;
   const parsed = parseBackup(JSON.stringify(state));
   assert.equal(parsed.preview.source, 'legacy_raw_v1');
   assert.equal(parsed.preview.createdAt, null);
   assert.equal(parsed.preview.recordCount, 1);
   assert(!('note' in parsed.preview)); assert.deepEqual(parsed.state, canonicalState(state));
-  assert.equal(parsed.state.schemaVersion,3); assert.deepEqual(parsed.state.localUnits,[]); assert.deepEqual(parsed.state.improvementProposals,[]);
+  assert.equal(parsed.state.schemaVersion,4); assert.deepEqual(parsed.state.localUnits,[]); assert.deepEqual(parsed.state.improvementProposals,[]); assert.deepEqual(parsed.state.translationVariants,[]);
 });
 
 test('raw schema-v2 import adds empty improvement storage without changing the source object',()=>{
   const current=initialState();
-  const {improvementProposals,...legacy}=current; legacy.schemaVersion=2;
+  const {improvementProposals,translationVariants,...legacy}=current; legacy.schemaVersion=2;
   const parsed=parseBackup(JSON.stringify(legacy));
   assert.equal(parsed.preview.source,'raw_state_v2');
-  assert.equal(parsed.state.schemaVersion,3);
+  assert.equal(parsed.state.schemaVersion,4);
   assert.deepEqual(parsed.state.improvementProposals,[]);
+  assert.deepEqual(parsed.state.translationVariants,[]);
   assert.equal(legacy.schemaVersion,2);
 });
 
@@ -119,4 +121,22 @@ test('backup round trip preserves attributed derivatives and private improvement
   assert.equal(parsed.state.localUnits[0].versions[0].derivedFrom.versionId,source.versionId);
   assert(!('injected' in parsed.state.localUnits[0].versions[0].derivedFrom));
   assert(!('injected' in parsed.state.improvementProposals[0].source));
+});
+
+test('backup round trip preserves known translation fields and drops unknown ones',()=>{
+  const source=catalog[0];
+  const draft={
+    title:'Translated title',description:'Translated description',place:'Translated place',tip:'Translated tip',
+    points:source.points.map((point,index)=>({id:point.id,text:`Translated point ${index+1}`})),
+  };
+  const variant=makeTranslationVariant(source,draft,{locale:'en',reviewStatus:'user_reviewed'});
+  const state=saveTranslationVariant(initialState(),source,variant);
+  const envelope=JSON.parse(createBackup(state,options));
+  envelope.state.translationVariants[0].futureField='drop-me';
+  envelope.state.translationVariants[0].points[0].futureField='drop-me';
+  const parsed=parseBackup(JSON.stringify(envelope));
+  assert.deepEqual(parsed.state,state);
+  assert.equal(parsed.preview.translationCount,1);
+  assert(!('futureField' in parsed.state.translationVariants[0]));
+  assert(!('futureField' in parsed.state.translationVariants[0].points[0]));
 });

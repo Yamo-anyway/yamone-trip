@@ -1,9 +1,9 @@
-export const SCHEMA_VERSION = 3;
+export const SCHEMA_VERSION = 4;
 // Domain DTOs cross JSON storage/API boundaries. Do not require browser-only globals.
 const cloneDto = value => JSON.parse(JSON.stringify(value));
 const validId = value => typeof value==='string' && /^[A-Za-z0-9_-]{1,128}$/.test(value);
 export function initialState() {
-  return { schemaVersion:SCHEMA_VERSION, preference:'auto', trips:[], records:{}, localUnits:[], unitDrafts:[], improvementProposals:[] };
+  return { schemaVersion:SCHEMA_VERSION, preference:'auto', trips:[], records:{}, localUnits:[], unitDrafts:[], improvementProposals:[], translationVariants:[] };
 }
 export function validDate(value) {
   if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
@@ -51,6 +51,24 @@ export function validateImprovementProposal(proposal) {
     typeof proposal.suggestion!=='string' || !proposal.suggestion.trim() || proposal.suggestion.length>1000) throw new Error('invalidImprovement');
   validateSourceReference(proposal.source);
   return proposal;
+}
+
+export function validateTranslationVariant(variant) {
+  if (!variant || !validId(variant.unitId) || !validId(variant.versionId) ||
+    typeof variant.sourceLocale!=='string' || !/^[A-Za-z]{2,3}(?:-[A-Za-z0-9]{2,8}){0,2}$/.test(variant.sourceLocale) ||
+    !['ko','en'].includes(variant.locale) || variant.locale===variant.sourceLocale ||
+    !['manual','machine'].includes(variant.method) || !['draft','machine_unreviewed','user_reviewed','needs_review'].includes(variant.reviewStatus)) throw new Error('invalidTranslation');
+  if ((variant.method==='manual' && variant.reviewStatus==='machine_unreviewed') || (variant.method==='machine' && variant.reviewStatus==='draft')) throw new Error('invalidTranslation');
+  for (const [key,max,required] of [['title',120,true],['description',1000,true],['place',300,true],['tip',500,false]]) {
+    if (typeof variant[key]!=='string' || variant[key].length>max || (required && !variant[key].trim())) throw new Error('invalidTranslation');
+  }
+  if (!Array.isArray(variant.points) || variant.points.length<1 || variant.points.length>5) throw new Error('invalidTranslation');
+  const ids=new Set();
+  for (const point of variant.points) {
+    if (!point || !validId(point.id) || ids.has(point.id) || typeof point.text!=='string' || !point.text.trim() || point.text.length>300) throw new Error('invalidTranslation');
+    ids.add(point.id);
+  }
+  return variant;
 }
 export function createTrip({name,startDate,endDate,region},id) {
   if (typeof name!=='string' || !name.trim() || name.trim().length>80 || !region?.country || !region?.city || !region?.district) throw new Error('invalidTrip');
@@ -132,18 +150,19 @@ export function validateUnitDraft(draft) {
 
 /** Schema v1 is upgraded in memory; storage is rewritten only by a later explicit user save. */
 export function migrateState(value) {
-  if (value?.schemaVersion===1) return assertState({...cloneDto(value),schemaVersion:SCHEMA_VERSION,localUnits:[],unitDrafts:[],improvementProposals:[]});
+  if (value?.schemaVersion===1) return assertState({...cloneDto(value),schemaVersion:SCHEMA_VERSION,localUnits:[],unitDrafts:[],improvementProposals:[],translationVariants:[]});
   if (value?.schemaVersion===2) {
     const previous=cloneDto(value);
     return assertState({...previous,schemaVersion:SCHEMA_VERSION,
       localUnits:previous.localUnits.map(local=>({...local,versions:local.versions.map(version=>({...version,derivedFrom:null}))})),
-      unitDrafts:previous.unitDrafts.map(draft=>({...draft,derivedFrom:null})),improvementProposals:[]});
+      unitDrafts:previous.unitDrafts.map(draft=>({...draft,derivedFrom:null})),improvementProposals:[],translationVariants:[]});
   }
+  if (value?.schemaVersion===3) return assertState({...cloneDto(value),schemaVersion:SCHEMA_VERSION,translationVariants:[]});
   return assertState(value);
 }
 
 export function assertState(state) {
-  if (!state || state.schemaVersion!==SCHEMA_VERSION || !['auto','ko','en'].includes(state.preference) || !Array.isArray(state.trips) || !state.records || typeof state.records!=='object' || Array.isArray(state.records) || !Array.isArray(state.localUnits) || !Array.isArray(state.unitDrafts) || !Array.isArray(state.improvementProposals)) throw new Error('loadError');
+  if (!state || state.schemaVersion!==SCHEMA_VERSION || !['auto','ko','en'].includes(state.preference) || !Array.isArray(state.trips) || !state.records || typeof state.records!=='object' || Array.isArray(state.records) || !Array.isArray(state.localUnits) || !Array.isArray(state.unitDrafts) || !Array.isArray(state.improvementProposals) || !Array.isArray(state.translationVariants)) throw new Error('loadError');
   const ids=new Set(),tripIds=new Set();
   for (const trip of state.trips) {
     createTrip(trip,trip.id);
@@ -190,6 +209,16 @@ export function assertState(state) {
     validateImprovementProposal(proposal);
     if (proposalIds.has(proposal.id)) throw new Error('loadError');
     proposalIds.add(proposal.id);
+  }
+  const translationKeys=new Set();
+  for (const variant of state.translationVariants) {
+    validateTranslationVariant(variant);
+    const key=`${variant.unitId}\u0000${variant.versionId}\u0000${variant.locale}`;
+    if (translationKeys.has(key)) throw new Error('loadError');
+    translationKeys.add(key);
+    const local=state.localUnits.find(unit=>unit.id===variant.unitId);
+    const source=local?.versions.find(version=>version.versionId===variant.versionId);
+    if (local && (!source || source.sourceLocale!==variant.sourceLocale || JSON.stringify(source.points.map(point=>point.id))!==JSON.stringify(variant.points.map(point=>point.id)))) throw new Error('loadError');
   }
   return state;
 }

@@ -12,6 +12,7 @@ import { costLabel, dictionaries, resolveLocale, textFor } from '../src/i18n.js'
 import { addUnitToTrip, createPrivateTrip, editTripItem, saveExperienceRecord } from './actions.js';
 import { deleteUnitDraft, draftFromLatest, makeUnitDraft, publishUnitDraft, saveUnitDraft } from './authoring.js';
 import { deleteImprovementProposal, makeImprovementProposal, saveImprovementProposal, sourceReference } from './lineage.js';
+import { deleteTranslationVariant, makeTranslationVariant, saveTranslationVariant, translationDraft, translationFor } from './translations.js';
 import { createBackup, parseBackup } from './backup.js';
 import { exportBackupFile, isPickerCancellation, pickBackupFile } from './backup-files.js';
 import { beginDraft, changeDraft, hasUnsavedChanges } from './drafts.js';
@@ -22,7 +23,7 @@ import { nativeCopy } from './copy.js';
 // No remote adapter, browser, map, upload or location module is imported here.
 const repository = new NativeRepository(AsyncStorage);
 const demoRegion = {country:'KR', city:'seoul', district:'seongsu'};
-const appVersion = '0.7.0';
+const appVersion = '0.8.0';
 
 function Text({style, ...props}) {
   return <NativeText {...props} style={[{color:'#182d25'}, style]} />;
@@ -74,6 +75,18 @@ function Client() {
   const n = nativeCopy[locale];
   const selectedTrip = state?.trips.find(trip => trip.id === selectedTripId) ?? null;
   const editorDirty = hasUnsavedChanges(editor);
+
+  function storedTranslation(target, targetLocale = locale) {
+    return state ? translationFor(state,target,targetLocale) : null;
+  }
+
+  function displayedTitle(target, targetLocale = locale) {
+    return storedTranslation(target,targetLocale)?.title ?? textFor(target.title,targetLocale,target.sourceLocale);
+  }
+
+  function displayedPoint(target, point, index, targetLocale = locale) {
+    return storedTranslation(target,targetLocale)?.points[index]?.text ?? textFor(point.text,targetLocale,target.sourceLocale);
+  }
 
   async function load() {
     if (lock.current) return;
@@ -268,6 +281,39 @@ function Client() {
         points:target.points.map((point,index)=>({id:pointIds[index],text:sourceText(point.text)})),
       },{draftId,unitId:null,baseVersionId:null,derivedFrom:reference});
     } catch { setFormError('invalidLineage'); }
+  }
+
+  function startTranslation(target, targetLocale) {
+    try {
+      const existing=storedTranslation(target,targetLocale);
+      openEditor('translation',translationDraft(target,targetLocale,existing),{unit:target,targetLocale,existing:!!existing});
+    } catch { setFormError('invalidTranslation'); }
+  }
+
+  function updateTranslationPoint(pointId, text) {
+    setEditor(current=>({...current,draft:{...current.draft,
+      points:current.draft.points.map(point=>point.id===pointId?{...point,text}:point),
+    }}));
+    setFormError(''); setNotice('');
+  }
+
+  async function saveTranslation(reviewStatus) {
+    let variant;
+    try {
+      variant=makeTranslationVariant(editor.context.unit,editor.draft,{locale:editor.context.targetLocale,reviewStatus,method:'manual'});
+    } catch { setFormError('invalidTranslation'); return; }
+    await commit(current=>saveTranslationVariant(current,editor.context.unit,variant),reviewStatus==='user_reviewed'?'translationReviewed':'translationDraftSaved',()=>{setOriginal(false);});
+  }
+
+  function confirmDeleteTranslation() {
+    openEditor('deleteTranslation',{}, {
+      unitId:editor.context.unit.id,versionId:editor.context.unit.versionId,locale:editor.context.targetLocale,
+      title:editor.draft.title,unit:editor.context.unit,
+    });
+  }
+
+  async function removeTranslation() {
+    await commit(current=>deleteTranslationVariant(current,editor.context.unitId,editor.context.versionId,editor.context.locale),'translationDeleted',()=>{setOriginal(true);});
   }
 
   async function exportLocalBackup() {
@@ -473,9 +519,44 @@ function Client() {
       <Button title={n.deleteImprovement} danger onPress={removeImprovement} disabled={busy} />
       <Button title={t.cancel} onPress={()=>requestLeave()} />
     </View>;
+    if (editor.kind === 'translation') {
+      const source=editor.context.unit;
+      const originalText=value=>value[source.sourceLocale] ?? Object.values(value)[0] ?? '';
+      const existing=storedTranslation(source,editor.context.targetLocale);
+      return <View style={styles.card}>
+        <Text accessibilityRole="header" style={styles.title}>{n.translationEditor}</Text>
+        <Text style={styles.badge}>{n.localTranslation}</Text>
+        <Text>{n.translationIdentity}: {source.id} / {source.versionId}</Text>
+        <Text>{n.originalLocale}: {source.sourceLocale} → {editor.context.targetLocale}</Text>
+        <Text>{n.translationHelp}</Text>
+        {existing ? <Text>{n.translationStatus}: {n[existing.reviewStatus]}</Text> : null}
+        <View style={styles.preview}><Text style={styles.label}>{t.original}</Text><Text>{originalText(source.title)}</Text><Text>{originalText(source.description)}</Text></View>
+        <Field label={n.translatedTitle} value={editor.draft.title} onChangeText={value=>updateDraft('title',value)} maxLength={120} />
+        <Field label={n.translatedDescription} value={editor.draft.description} onChangeText={value=>updateDraft('description',value)} multiline maxLength={1000} />
+        <Field label={n.translatedPlace} value={editor.draft.place} onChangeText={value=>updateDraft('place',value)} maxLength={300} />
+        <Field label={n.translatedTip} value={editor.draft.tip} onChangeText={value=>updateDraft('tip',value)} multiline maxLength={500} />
+        <Text style={styles.subtitle}>{n.translatedPoints}</Text>
+        {source.points.map((point,index)=><View key={point.id} style={styles.pointEditor}>
+          <Text>{t.original}: {originalText(point.text)}</Text>
+          <Field label={`${n.point} ${index+1}`} value={editor.draft.points[index].text} onChangeText={value=>updateTranslationPoint(point.id,value)} maxLength={300} />
+          <Text style={styles.muted}>{n.samePointId}: {point.id}</Text>
+        </View>)}
+        {errorText ? <Text accessibilityRole="alert" style={styles.error}>{errorText}</Text> : null}
+        <Button title={n.saveTranslationDraft} onPress={()=>saveTranslation('draft')} disabled={busy} />
+        <Button title={n.markTranslationReviewed} onPress={()=>saveTranslation('user_reviewed')} disabled={busy} />
+        {existing ? <Button title={n.deleteTranslation} danger onPress={confirmDeleteTranslation} /> : null}
+        <Button title={t.cancel} onPress={()=>requestLeave()} />
+      </View>;
+    }
+    if (editor.kind === 'deleteTranslation') return <View style={styles.card} accessibilityViewIsModal>
+      <Text accessibilityRole="header" style={styles.title}>{n.deleteTranslationTitle}</Text>
+      <Text>{editor.context.title}</Text><Text>{n.deleteTranslationBody}</Text>
+      <Button title={n.deleteTranslation} danger onPress={removeTranslation} disabled={busy} />
+      <Button title={t.cancel} onPress={()=>requestLeave()} />
+    </View>;
     if (editor.kind === 'add') return <View style={styles.card}>
       <Text accessibilityRole="header" style={styles.title}>{t.add}</Text>
-      <Text style={styles.subtitle}>{textFor(editor.context.unit.title, locale, editor.context.unit.sourceLocale)}</Text>
+      <Text style={styles.subtitle}>{displayedTitle(editor.context.unit)}</Text>
       <Text>{n.selectTripFirst}</Text>
       {state.trips.map(trip => <Button key={trip.id} title={`${trip.name} · ${trip.startDate}`} selected={editor.draft.tripId === trip.id} onPress={() => chooseAddTrip(trip.id)} />)}
       <Field label={`${t.day} (YYYY-MM-DD)`} value={editor.draft.date} onChangeText={value => updateDraft('date', value)} maxLength={10} />
@@ -486,7 +567,7 @@ function Client() {
     </View>;
     if (editor.kind === 'schedule') return <View style={styles.card}>
       <Text accessibilityRole="header" style={styles.title}>{t.editSchedule}</Text>
-      <Text>{textFor(editor.context.snapshot.title, locale, editor.context.snapshot.sourceLocale)}</Text>
+      <Text>{displayedTitle(editor.context.snapshot)}</Text>
       <Text style={styles.muted}>{n.scheduleSource}: {editor.context.snapshot.versionId}</Text>
       <Field label={`${t.day} (YYYY-MM-DD)`} value={editor.draft.date} onChangeText={value => updateDraft('date', value)} maxLength={10} />
       <Field label={`${t.start} (HH:mm)`} value={editor.draft.startTime} onChangeText={value => updateDraft('startTime', value)} maxLength={5} />
@@ -500,12 +581,12 @@ function Client() {
     const snapshot = editor.context.snapshot;
     return <View style={styles.card}>
       <Text accessibilityRole="header" style={styles.title}>{t.todayExperience}</Text>
-      <Text style={styles.subtitle}>{textFor(snapshot.title, locale, snapshot.sourceLocale)}</Text>
+      <Text style={styles.subtitle}>{displayedTitle(snapshot)}</Text>
       <Text>{t.checklist}</Text>
-      {snapshot.points.map(point => {
+      {snapshot.points.map((point,index) => {
         const checked = editor.draft.checkedIds.includes(point.id);
         return <Button key={point.id} selected={checked}
-          title={`${checked ? '✓' : '○'} ${textFor(point.text, locale, snapshot.sourceLocale)} · ${checked ? n.checkOn : n.checkOff}`}
+          title={`${checked ? '✓' : '○'} ${displayedPoint(snapshot,point,index)} · ${checked ? n.checkOn : n.checkOff}`}
           onPress={() => togglePoint(point.id)} />;
       })}
       <Field label={t.note} value={editor.draft.note} onChangeText={value => updateDraft('note', value)} multiline maxLength={2000} />
@@ -518,13 +599,17 @@ function Client() {
   }
 
   function renderUnit() {
-    const translated=Object.prototype.hasOwnProperty.call(unit.title,locale) && locale!==unit.sourceLocale;
+    const savedTranslation=storedTranslation(unit,locale);
+    const embeddedTranslation=Object.prototype.hasOwnProperty.call(unit.title,locale) && locale!==unit.sourceLocale;
+    const translated=Boolean(savedTranslation || embeddedTranslation);
     const originalView=original || !translated;
-    const localized = value => textFor(value, originalView ? unit.sourceLocale : locale, unit.sourceLocale);
+    const localized = (key,value) => originalView
+      ? textFor(value,unit.sourceLocale,unit.sourceLocale)
+      : savedTranslation?.[key] ?? textFor(value,locale,unit.sourceLocale);
     const sourceLabel=unit.sourceType==='ai_draft'?t.aiDraft:unit.sourceType==='user_authored'?n.localAuthored:`${t.originalExperience} · ${t.local}`;
     return <View style={styles.card}>
       <Button title={t.back} onPress={() => setUnit(null)} /><Text style={styles.badge}>{unit.sourceType==='user_authored'?n.localPrivateUnverified:n.unverified}</Text>
-      <Text accessibilityRole="header" style={styles.title}>{localized(unit.title)}</Text>
+      <Text accessibilityRole="header" style={styles.title}>{localized('title',unit.title)}</Text>
       <Text>{sourceLabel}</Text>
       <Text>{t.author}: {unit.sourceType==='user_authored'?n.localDevice:unit.author} · {t.version} {unit.version}</Text>
       <Text style={styles.muted}>{unit.id} / {unit.versionId}</Text><Text>{n.source}: {unit.sourceLocale}</Text>
@@ -534,12 +619,18 @@ function Client() {
         <Text style={styles.muted}>{unit.derivedFrom.unitId} / {unit.derivedFrom.versionId}</Text>
       </View> : null}
       <Text>{originalView ? t.original : t.translation}</Text>
+      {!originalView && savedTranslation ? <Text style={styles.badge}>{savedTranslation.method==='machine'?n.machineTranslation:n.manualTranslation} · {n[savedTranslation.reviewStatus]}</Text> : null}
+      {!originalView && !savedTranslation && embeddedTranslation ? <Text style={styles.badge}>{n.demoTranslation}</Text> : null}
       {translated ? <Button title={original ? t.viewTranslated : t.viewOriginal} onPress={() => setOriginal(!original)} /> : null}
-      <Text>{localized(unit.description)}</Text><Text>{localized(unit.place)}</Text>
+      <Text>{localized('description',unit.description)}</Text><Text>{localized('place',unit.place)}</Text>
       <Text>{unit.durationMinutes} {t.minutes} · {costLabel(unit.cost, locale)}</Text>
       <Text style={styles.subtitle}>{t.points}</Text>
-      {unit.points.map((point, index) => <Text key={point.id}>{index + 1}. {localized(point.text)}</Text>)}
-      <Text style={styles.subtitle}>{t.tip}</Text><Text>{localized(unit.tip)}</Text>
+      {unit.points.map((point, index) => <Text key={point.id}>{index + 1}. {originalView ? textFor(point.text,unit.sourceLocale,unit.sourceLocale) : savedTranslation?.points[index]?.text ?? textFor(point.text,locale,unit.sourceLocale)}</Text>)}
+      <Text style={styles.subtitle}>{t.tip}</Text><Text>{localized('tip',unit.tip)}</Text>
+      {['ko','en'].filter(targetLocale=>targetLocale!==unit.sourceLocale).map(targetLocale=>{
+        const existing=storedTranslation(unit,targetLocale);
+        return <Button key={targetLocale} title={`${existing?n.editTranslation:n.createTranslation} · ${targetLocale==='ko'?'한국어':'English'}`} onPress={()=>startTranslation(unit,targetLocale)} />;
+      })}
       <Button title={t.add} onPress={() => startAddToTrip(unit)} />
       <Button title={n.proposeImprovement} onPress={()=>startImprovement(unit)} />
       <Button title={n.createDerivative} onPress={()=>startDerivative(unit)} />
@@ -556,7 +647,7 @@ function Client() {
       {region ? <>
         <Field label={t.search} value={query} onChangeText={setQuery} />
         {filterUnits(catalog, {query, region}).map(item => <View key={item.versionId} style={styles.card}>
-          <Text style={styles.badge}>{n.unverified}</Text><Text style={styles.subtitle}>{textFor(item.title, locale, item.sourceLocale)}</Text>
+          <Text style={styles.badge}>{n.unverified}</Text><Text style={styles.subtitle}>{displayedTitle(item)}</Text>
           <Text>{item.sourceType === 'ai_draft' ? t.aiDraft : `${t.originalExperience} · ${t.local}`}</Text>
           <Text>{item.durationMinutes} {t.minutes} · {costLabel(item.cost, locale)}</Text>
           <Button title={t.detail} onPress={() => {setOriginal(false); setUnit(item);}} />
@@ -579,7 +670,7 @@ function Client() {
         const record = state.records[item.id];
         return <View key={item.id} style={styles.card}>
           {conflicts.has(item.id) ? <Text accessibilityRole="alert" style={styles.error}>{t.conflict}</Text> : null}
-          <Text style={styles.subtitle}>{textFor(item.snapshot.title, locale, item.snapshot.sourceLocale)}</Text>
+          <Text style={styles.subtitle}>{displayedTitle(item.snapshot)}</Text>
           <Text>{item.date} · {item.startTime}–{timeOf(scheduleEnd(item))}</Text>
           <Text>{t.plannedTime}: {item.durationMinutes} {t.minutes} · {t.movement}: {item.movementMinutes ?? 0} · {t.breakTime}: {item.breakMinutes ?? 0}</Text>
           <Text style={styles.muted}>{n.scheduleSource}: {item.unitVersionId}</Text>
@@ -629,12 +720,14 @@ function Client() {
       {state.localUnits.map(local=>{
         const latest=local.versions[local.versions.length-1];
         const hasDraft=state.unitDrafts.some(draft=>draft.unitId===local.id);
+        const translations=state.translationVariants.filter(variant=>variant.unitId===latest.id && variant.versionId===latest.versionId);
         return <View key={local.id} style={styles.card}>
           <Text style={styles.badge}>{latest.derivedFrom?n.attributedDerivative:n.localPrivateUnverified}</Text>
-          <Text style={styles.subtitle}>{textFor(latest.title,locale,latest.sourceLocale)}</Text>
+          <Text style={styles.subtitle}>{displayedTitle(latest)}</Text>
           <Text>{n.versionCount}: {local.versions.length} · {n.source}: {latest.sourceLocale}</Text>
+          {translations.length ? <Text>{n.savedTranslations}: {translations.map(variant=>`${variant.locale} · ${n[variant.reviewStatus]}`).join(' / ')}</Text> : null}
           {latest.derivedFrom ? <Text>{n.derivedFrom}: {latest.derivedFrom.title} · {latest.derivedFrom.versionId}</Text> : null}
-          {local.versions.map(version=><Button key={version.versionId} title={`${t.version} ${version.version} · ${textFor(version.title,locale,version.sourceLocale)}`} onPress={()=>{setOriginal(false);setUnit(version);}} />)}
+          {local.versions.map(version=><Button key={version.versionId} title={`${t.version} ${version.version} · ${displayedTitle(version)}`} onPress={()=>{setOriginal(false);setUnit(version);}} />)}
           {hasDraft ? <Text>{n.nextVersionDraftExists}</Text> : <Button title={n.createNextVersion} onPress={()=>startNextVersion(local)} />}
         </View>;
       })}
@@ -662,7 +755,7 @@ function Client() {
           <Text>{n.backupSource}: {preview.source === 'legacy_raw_v1' ? n.backupLegacy : preview.source.startsWith('raw_state_v') ? n.backupRaw : n.backupCurrent}</Text>
           <Text>{n.backupCreated}: {preview.createdAt ?? n.backupUnknownDate}</Text>
           <Text>{n.backupCounts}: {preview.tripCount} / {preview.itemCount} / {preview.recordCount}</Text>
-          <Text>{n.backupAuthorCounts}: {preview.localUnitCount} / {preview.draftCount} / {preview.improvementCount}</Text>
+          <Text>{n.backupAuthorCounts}: {preview.localUnitCount} / {preview.draftCount} / {preview.improvementCount} / {preview.translationCount}</Text>
           <Text style={styles.error}>{n.backupReplaceWarning}</Text>
           <Button title={n.confirmImport} danger onPress={confirmBackupImport} disabled={busy || !!error} />
           <Button title={t.cancel} onPress={() => {setBackupCandidate(null); setBackupError('');}} disabled={busy} />

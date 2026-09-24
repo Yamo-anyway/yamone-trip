@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.8.0 — 2026-09-25
+
+- M06: added device-only Korean/English translation variants bound to the exact original unit ID, version ID, original locale and experience-point IDs. Editing or deleting a translation never changes the original and never creates derivative lineage.
+- Added manual translation drafts and explicit user-reviewed status. The model also distinguishes unreviewed machine translation and needs-review states for future server import, but this client does not call a translator or generate AI text.
+- Unit details can create/edit target-language text, switch back to the preserved original and show manual/machine, draft/review or unverified demo labels. Saved translations are used consistently in discovery, trip schedules and checklists when their exact version matches.
+- State schema v4 and validated backup/restore now preserve translation variants while dropping unknown fields. Schema-v1/v2/v3 records migrate in memory and are rewritten only after an explicit save.
+- Validation: `npm test` **100/100 passed**; `npm run check` passed; Android Metro/Hermes bundle passed (**613 modules**); offline Android source prebuild passed with v0.8.0/code 8 and source manifest checks retained backup/OTA and location/media/advertising restrictions. `npm run test:ui` was attempted and blocked before launch by missing Chromium. APK assembly was attempted without external downloads but the Gradle 9.0.0 distribution is not installed and the restricted environment could not fetch it; Android SDK, adb and `javac` are also absent. No APK, merged manifest, native UI or device pass is claimed.
+
 ## 0.7.0 — 2026-09-25
 
 - M05: added private local improvement proposals bound to an exact source unit/version. Saving or deleting a proposal never changes the source and the UI explicitly says it was not sent to an author or server.
