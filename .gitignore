@@ -9,3 +9,8 @@ test-results/
 .DS_Store
 *.jks
 *.keystore
+.expo/
+android/
+ios/
+*.apk
+*.aab

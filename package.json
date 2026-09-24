@@ -1,14 +1,31 @@
 {
   "name": "yamone-trip",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "private": true,
   "type": "module",
+  "main": "native/index.js",
   "description": "Korean/English local-first travel experience client; no backend or device location",
-  "engines": { "node": ">=22" },
+  "engines": {
+    "node": ">=22"
+  },
   "scripts": {
+    "start": "EXPO_NO_TELEMETRY=1 expo start --offline",
+    "android": "EXPO_NO_TELEMETRY=1 expo run:android",
+    "bundle:android": "EXPO_NO_TELEMETRY=1 expo export --platform android --output-dir dist/android",
     "dev": "node scripts/serve.mjs",
     "test": "node --test tests/*.test.mjs",
-    "check": "node scripts/check.mjs",
+    "check": "node scripts/check.mjs && node scripts/check-native.mjs",
     "test:ui": "node scripts/ui-smoke.mjs"
+  },
+  "dependencies": {
+    "@react-native-async-storage/async-storage": "2.2.0",
+    "expo": "55.0.31",
+    "expo-localization": "55.0.19",
+    "react": "19.2.0",
+    "react-native": "0.83.10",
+    "react-native-safe-area-context": "5.6.2"
+  },
+  "devDependencies": {
+    "@babel/parser": "7.29.9"
   }
 }

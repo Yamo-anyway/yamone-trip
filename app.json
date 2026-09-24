@@ -1,0 +1,31 @@
+{
+  "expo": {
+    "name": "Yamone Trip",
+    "slug": "yamone-trip",
+    "version": "0.3.0",
+    "platforms": ["android"],
+    "updates": {"enabled": false},
+    "android": {
+      "package": "com.yamone.trip.dev",
+      "versionCode": 3,
+      "allowBackup": false,
+      "permissions": [],
+      "blockedPermissions": [
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.ACCESS_BACKGROUND_LOCATION",
+        "android.permission.CAMERA",
+        "android.permission.RECORD_AUDIO",
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE",
+        "android.permission.READ_MEDIA_IMAGES",
+        "android.permission.READ_MEDIA_VIDEO",
+        "android.permission.ACCESS_MEDIA_LOCATION",
+        "android.permission.SYSTEM_ALERT_WINDOW",
+        "android.permission.VIBRATE",
+        "com.google.android.gms.permission.AD_ID"
+      ]
+    },
+    "plugins": ["expo-localization"]
+  }
+}

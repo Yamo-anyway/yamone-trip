@@ -1,0 +1,28 @@
+export const nativeCopy = {
+  ko: {
+    loading: '기기 데이터를 읽고 있어요…', retry: '다시 읽기',
+    phase: '앱 전환 1단계 · 개발용',
+    chooseArea: '지역을 직접 선택해 주세요',
+    selectArea: '대한민국 → 서울 → 성수동 선택',
+    changeArea: '다른 지역 선택',
+    oneArea: '현재 데모는 성수동만 제공합니다. 기기 언어나 위치로 지역을 정하지 않습니다.',
+    nativeStorage: '앱 데이터 삭제·앱 제거·기기 변경 시 기록을 잃을 수 있습니다. 기기 내 비암호화 저장이며 계정·인증·동기화가 아닙니다. 백업 기능은 아직 없습니다.',
+    nativeSaveError: '앱 저장에 실패했습니다. 저장 완료로 처리하지 않았습니다. 기존 데이터를 다시 읽은 뒤 재시도해 주세요.',
+    tripPending: '여행 생성·일정 편집·경험 체크 화면은 다음 앱 전환 단계에서 연결합니다. 기존 웹 데이터는 수정하거나 자동 이전하지 않습니다.',
+    savedTrips: '앱에 저장된 여행', unverified: '예시 콘텐츠 · 미검증',
+    source: '원문 언어', savedLanguage: '언어 설정을 이 기기에 저장했습니다.',
+  },
+  en: {
+    loading: 'Reading device data…', retry: 'Reload data',
+    phase: 'Native app foundation · Development build',
+    chooseArea: 'Select an area manually',
+    selectArea: 'Select South Korea → Seoul → Seongsu',
+    changeArea: 'Change area',
+    oneArea: 'Only Seongsu is available in this demo. Device language and location do not choose your area.',
+    nativeStorage: 'Clearing app data, uninstalling or changing devices can lose records. Storage is unencrypted and local, not an account, authentication or sync. Backup is not available yet.',
+    nativeSaveError: 'App storage failed. The change was not marked as saved. Reload existing data before trying again.',
+    tripPending: 'Native trip creation, schedule editing and experience checklists are the next migration step. Existing browser data is not modified or automatically imported.',
+    savedTrips: 'Trips stored in this app', unverified: 'Example content · Unverified',
+    source: 'Original language', savedLanguage: 'Language preference saved on this device.',
+  },
+};

@@ -1,4 +1,6 @@
 export const SCHEMA_VERSION = 1;
+// Domain DTOs cross JSON storage/API boundaries. Do not require browser-only globals.
+const cloneDto = value => JSON.parse(JSON.stringify(value));
 const validId = value => typeof value==='string' && /^[A-Za-z0-9_-]{1,128}$/.test(value);
 export function initialState() {
   return { schemaVersion:SCHEMA_VERSION, preference:'auto', trips:[], records:{} };
@@ -38,7 +40,7 @@ export function validateUnit(unit) {
 export function createTrip({name,startDate,endDate,region},id) {
   if (typeof name!=='string' || !name.trim() || name.trim().length>80 || !region?.country || !region?.city || !region?.district) throw new Error('invalidTrip');
   dateRange(startDate,endDate);
-  return {id,name:name.trim(),startDate,endDate,region:structuredClone(region),visibility:'private',items:[]};
+  return {id,name:name.trim(),startDate,endDate,region:cloneDto(region),visibility:'private',items:[]};
 }
 export function scheduleEnd(item) {
   const values=[item.durationMinutes,item.movementMinutes===undefined?0:item.movementMinutes,item.breakMinutes===undefined?0:item.breakMinutes];
@@ -65,7 +67,7 @@ export function updateItem(trip,itemId,patch) {
 }
 export function addItem(trip,unit,{date,startTime},id) {
   validateUnit(unit);
-  const item={id,date,startTime,durationMinutes:unit.durationMinutes,movementMinutes:0,breakMinutes:0,unitId:unit.id,unitVersionId:unit.versionId,snapshot:structuredClone(unit)};
+  const item={id,date,startTime,durationMinutes:unit.durationMinutes,movementMinutes:0,breakMinutes:0,unitId:unit.id,unitVersionId:unit.versionId,snapshot:cloneDto(unit)};
   validateSchedule(trip,item);
   return {...trip,items:[...trip.items,item]};
 }

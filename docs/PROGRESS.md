@@ -1,38 +1,50 @@
 # Client development checkpoint
 
-Read repository HEAD first; this document is the durable handoff across scheduled runs. Do not rely on scratch files from an earlier run. Work only on this project; no backend, real API connection, deployment or paid services.
+Read latest repository HEAD first; it is the durable source of truth. Work only in Yamo-anyway/yamone-trip. No backend, live API, deployment, paid service, store submission or subagents.
+
+## Priority correction: app, not web
+
+After M02 the user explicitly corrected the website direction: **build an app**. The handoff targets Android and an installable APK. v0.3.0 starts a native React Native/Expo client, not a WebView. The old web implementation and M01/M02 tests remain intact for reference. Do not continue web feature work or the old M08 PWA plan. Native development takes precedence over M03.
 
 ## Current milestone
 
-**M02 — v0.2.0: schedule editing implemented; browser verification pending.** Day/start/duration editing; manual movement and break estimates after each item; stable time-based presentation order; buffer-inclusive conflict warnings and same-day/calendar validation. Editing preserves original unit/version snapshots, record IDs, completion and notes. Legacy schema-v1 items without estimates are read as zero without a load-time rewrite. Server calls remain disabled.
+**A01 — v0.3.0: native app foundation implemented; APK/device validation pending.**
 
-This run verified all 24 starting files against latest GitHub main `4a447c2116101c253a12af0bc2a630f366fc0e29` before editing. M01 features remain: bilingual demo discovery/details, private local trips, manual checklists/notes, safe browser storage, and disabled API contract/adapter.
+- Native application entry, safe-area layout, navigation/back handling, manual area selection, bilingual demo search/details, explicit source/version/translation labels and original toggle.
+- Native language settings use device language only for UI, never for region. Local preference changes use AsyncStorage through one serialized repository. Corrupt/future schema, stale writes and failed/ambiguous persistence block writes until reload; no reset/erase fallback. Preserve full existing state, snapshots and private records.
+- Separate native storage namespace. No automatic browser migration, no account/publication claims. My trips/My units clearly state the migration/features still pending; no fake add/save/publish action.
+- Expo SDK 55 dependencies pinned with package-lock; Android development identifier only (`com.yamone.trip.dev`). Location, camera/media/audio, advertising ID and unnecessary overlay/vibration permissions have removal directives. OS backup and OTA updates disabled in app config. No remote API or photo module connected.
+- All 25 starting repository files were SHA-verified against main `13a8fa8f59726834539799b39ad55c8a4a2c7237` before edits. No old browser source or user data removed. Shared JSON DTO cloning no longer depends on `structuredClone`; explicit regression coverage runs with that global absent.
 
-Verification on 2026-09-24: `npm test` **40/40 passed** in this run (domain, storage, API adapter, localhost static server; 12 new schedule tests). `npm run check` passed (14 JavaScript files, locale-key parity, fixture validation, source privacy/offline guards, handoff files). `npm run test:ui` was attempted and **blocked before browser launch**: Playwright is available but its Chromium headless-shell executable is absent. The earlier installer returned truncated/invalid archives, so this run did not repeat the failed download. The smoke script now contains 14 browser scenarios, including four new edit/validation/cancel/reload/reorder scenarios, but none of the browser interactions or screenshots are verified. No UI/visual pass is claimed. Retry in a supported working browser environment before release; never bypass network restrictions or repeatedly retry an unchanged failed download.
+## Validation in this run — 2026-09-24
+
+- `npm test`: **51/51 passed**, including 11 new native repository/portability tests. Tests use a mocked disk, not an Android device.
+- `npm run check`: passed; existing source checks plus native JSX parse, ko/en key parity, version/config/privacy guards. This is not a UI test.
+- `npm run bundle:android`: passed, Metro/Hermes Android bundle generated (595 modules). Bundle export is NOT an APK.
+- `EXPO_OFFLINE=1 EXPO_NO_TELEMETRY=1 npx expo install --check`: matched the installed SDK's bundled dependency table; the CLI warns that offline validation is limited. Initial online metadata lookup timed out. Direct npm installation succeeded; no network bypass was used.
+- `CI=1 EXPO_OFFLINE=1 EXPO_NO_TELEMETRY=1 npx expo prebuild --platform android --no-install`: passed. Generated Android **source** manifest inspected for backup/update settings and permission removal directives. This is not a Gradle merged/release manifest. Generated project, signing material and output are ignored, not committed.
+- `npm run test:ui`: attempted; blocked before launch by absent Chromium headless-shell. Earlier failed browser download was not repeated. This script tests the retained web reference, not native screens.
+- No JDK compiler (`javac`), Android SDK, adb, Gradle installation or emulator available. No APK build, install, runtime screenshots or native interaction pass is claimed. Do not use a web preview as substitute evidence.
 
 ## Next bounded milestones (one per run)
 
 | Order | Work | Acceptance |
 | --- | --- | --- |
-| M02 (implemented) | Schedule editing: start/day/reorder via time, explicit manual movement/break estimates | Domain/storage/locale checks passed; browser verification pending |
-| M03 | Export/import backup and local schema migration | Validate entire import before change; preview + confirmation; preserve corrupt/old data; no secrets; round-trip tests |
-| M04 | Local unit authoring and immutable version editing | 1–5 points; source language; drafts clearly local/private; old trip snapshots unchanged; no fake public publishing |
-| M05 | Local improvement proposals and attributed derivatives | New derivative identity with source/version; proposals don't silently edit originals; no fake notifications |
-| M06 | Translation variant editor/review states | Original preserved; same unit ID and point IDs; ko/en rendering; no live translation provider |
-| M07 | API mock harness and repository boundary hardening | Auth/errors/revisions/idempotency/abort/offline tested; live API still disabled; contracts updated |
-| M08 | PWA/offline client packaging | No backend; manifest and service worker update/cache tests; personal data not put in public/static caches; explain limitations |
-| M09 | Accessibility, keyboard, responsive and data-loss regression pass | 320px/desktop ko/en; focus/contrast/form errors; unsaved-input safeguards; test report |
-| M10 | Client handoff and release gates | Document what is complete, what needs server/product decisions, unresolved bugs; final tests; pause this automation |
+| A01 (implemented) | Native discovery/settings and async storage boundary | Node/static/bundle checks passed; APK/UI not yet verified |
+| **A02 (next)** | Native private trip creation, schedule edit, checklist/notes | Reuse M01/M02 validation; snapshots/IDs preserved; native-compatible cloning and ID generation (do not assume browser globals); explicit saves/errors; unsaved input protection; ko/en |
+| A03 | Local standalone Android APK build and device smoke | Toolchain availability check first; offline cold launch, restart persistence, back/keyboard/font/safe areas; inspect merged manifest/traffic; no cloud build/account/signing secrets without authority. Record environment blockers and continue independent client tasks if possible |
+| M03 | Native backup/import and local schema migration | Entire import validated before preview/confirmation; corrupt/old data preserved; snapshots/notes round trip; browser transfer only explicit |
+| M04 | Native local authoring and immutable versions | 1–5 stable points; original locale; local/private drafts; existing snapshots unchanged |
+| M05 | Native improvements and attributed derivatives | New derivative ID with original unit/version attribution; no fake public notifications |
+| M06 | Native translation variant editor/review states | Original preserved; same unit/point identities; ko/en; no translation service |
+| M07 | API mock harness and repository boundaries | Auth/error/revision/idempotency/abort mocks; real calls disabled |
+| M09 | Native accessibility and data-loss regression pass | Small screens, ko/en, font scaling, TalkBack/back/keyboard, failed/unsaved writes; device evidence when available |
+| M10 | Client handoff/release gates | Final tests; clear server/product/SDK/signing limitations; pause only this project's automation when complete or all remaining work blocked |
 
-Photo uploads are deferred; add only if metadata stripping/validation can be safely built and tested within the authorized client scope. Native wrapping, third-party maps, login selection and legal policy drafting require separate decisions rather than assumed defaults. Do not introduce dependencies merely to fill a scheduled run.
+M08 PWA is **superseded**, not completed. Do not create a website or web deployment. iOS, final package/signing/distribution, login provider, release countries, minimum age, map provider, growth thresholds and legal policy remain undecided. Development dependency/framework selection is not a launch-policy decision.
 
-## Known limitations / next action
+## Remaining limitations / next action
 
-- Sample content only in Seoul/Seongsu; region selector is manually operated but currently has one seeded option.
-- Schedule editor is implemented, but browser interactions/layout remain unverified. Estimates are manual, after the associated item, default zero; users must review them after reordering. Overlap warnings do not prevent saving; no optimized routes are claimed.
-- localStorage is small and device-specific. Quota/corrupt/stale-tab writes are refused. There is no cross-device sync or backup yet.
-- Notes are explicit-save; unsaved input protection is a later regression item. No real accounts or secure authentication.
-- My units intentionally shows a forthcoming state until M04; no inert publish button.
-- No service worker yet; no installability/offline claims.
+Start with latest HEAD and toolchain availability, then implement **A02**. Shared domain cloning now uses JSON DTO copies and is tested without `structuredClone`. Do not assume `crypto.randomUUID`, `window`, DOM or localStorage exists on native; choose/test native-compatible ID generation when connecting trip creation. AsyncStorage is unencrypted, device-scoped and not authentication; no backups yet. UI/settings source and bundle checks do not replace real-device persistence or accessibility validation. Catalog contains only illustrative Seoul/Seongsu examples. Source manifests are not merged manifests; SDK default network permission and development tooling must be reviewed before release.
 
-Start the next run by checking whether browser validation is now available, then **M03: export/import backup and local schema migration**. Validate and preview the entire import before explicit confirmation; preserve existing data on rejection/failure. An unavailable browser does not authorize claiming UI tests passed; continue safe domain/client work with the limitation recorded. A reproducible application test failure takes precedence over features. Re-read current HEAD and preserve any intervening user changes. Each run must update version, changelog, this file and actual check results; commit through the authorized GitHub connection with a fast-forward update. Stop for protection/permission barriers. On backlog completion or when everything remaining requires user/backend authority, report once and pause only this project's task.
+Keep all real server calls disabled. Photo upload remains prohibited until metadata stripping and tests are complete. Fix reproducible defects before features. Each run must update version/changelog/this file with actual results, re-read HEAD and commit using base tree/parent plus fast-forward only. Pause on permission/reconnection/protection barriers. Do not modify other project automations.

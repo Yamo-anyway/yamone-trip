@@ -4,6 +4,7 @@ Work only in Yamo-anyway/yamone-trip. Read docs/PRODUCT.md, docs/PROGRESS.md and
 
 ## User-approved constraints
 
+- The user corrected the web implementation on 2026-09-24: build an app, not a website. Native Android/APK development now takes precedence; read the A-series migration milestones in PROGRESS. Preserve the old web reference, but do not expand it or implement the superseded PWA milestone. React Native screens must not be replaced by a WebView.
 - Client development only. Do not implement/deploy a backend, provision services, connect a real API, add credentials, send email, buy services or submit to an app store.
 - Korean and English UI. Other source-content languages may be represented but adding another UI language is out of scope.
 - No device location permissions, geolocation APIs, current-location lookup, tracking, arrival detection, GPS completion or IP-to-location inference. Region is selected manually. Public place information is not permission to collect a person's whereabouts.

@@ -1,46 +1,53 @@
 # Yamone Trip / 야모네 트립
 
-작은 여행 경험을 골라 일정으로 만들고 직접 경험하는, 한국어·영어 모바일 웹 클라이언트입니다.
+**v0.3.0 · Android 네이티브 앱 전환 1단계. APK는 아직 생성·검증하지 못했습니다.**
 
-**v0.2.0 · Local demo. Backend, deployment and app-store release are not included.**
+사용자의 “웹이 아닌 앱” 요청에 따라 React Native/Expo로 전환 중입니다. 웹뷰로 기존 사이트를 감싼 앱이 아닙니다. `native/`가 앱 화면이고 `src/`의 데이터·규칙을 재사용합니다. 이전 웹 화면은 회귀검사용으로만 보존합니다. 서버·실제 API·위치 기능·유료 빌드 서비스·스토어 제출은 포함하지 않습니다.
 
-## Run locally
+## 이번 앱 범위
 
-Requires Node.js 22 or later. No runtime packages, CDN assets or API keys are needed.
+- 한국어/영어 UI, 기기 언어 기본값과 언어 설정의 앱 내부 저장.
+- 지역을 직접 선택한 후 데모 유닛 검색/상세, 1–5개 경험 포인트, 원문/데모 번역, 작성자와 버전 표시.
+- 앱 저장 실패·손상 데이터·동시 변경 보호. 계정·인증·공개 게시가 아닌 비암호화 로컬 저장.
+- 네이티브 여행 생성·일정 편집·체크리스트는 **다음 전환 단계**입니다. 현재 해당 탭은 미구현 안내를 명시합니다.
+- 앱과 브라우저 저장소를 분리합니다. 기존 데이터 자동 이전/삭제는 없습니다.
+
+## 개발 및 검사
+
+Node.js 22 이상과 npm이 필요합니다. 잠금 파일 기준으로 설치합니다.
+
+```sh
+npm ci
+npm test
+npm run check
+npm run bundle:android
+```
+
+`bundle:android`는 Android용 JS/Hermes 번들을 만드는 검사이며 APK 빌드나 화면 테스트가 아닙니다. `check`는 JSX 구문·언어 키·앱 설정·소스 경계를 검사합니다. 단위 테스트의 저장소는 mock이며 실제 기기의 디스크 동작을 보증하지 않습니다.
+
+JDK/Android SDK/에뮬레이터 또는 USB 기기가 갖춰진 로컬 개발 환경에서:
+
+```sh
+npm run android
+```
+
+이 명령은 로컬 네이티브 디버그 빌드를 위한 것이며 앱 공개/스토어 제출을 하지 않습니다. 일반 개발 빌드는 Metro에 연결될 수 있습니다. 독립 실행 APK의 번들 포함·서명·오프라인 재실행·권한 검사는 별도 A03 게이트입니다. 현재 환경에는 JDK 컴파일러·Android SDK·adb가 없으므로 APK/기기 검증 완료를 주장하지 않습니다. 클라우드 빌드 계정/토큰은 필요하지 않으며 추가하지 마세요.
+
+`npm start`는 오프라인 모드 Metro 개발 서버를 실행합니다. 앱 내부 API는 연결하지 않습니다. Expo 텔레메트리 및 앱 OTA 업데이트는 비활성 설정입니다. `app.json`의 Android 패키지 `com.yamone.trip.dev`는 개발용 임시 식별자이며 출시 식별자 확정이 아닙니다. 생성된 `android/`, 바이너리, 키/서명 파일은 커밋하지 않습니다.
+
+참고한 공식 문서: [Expo SDK 호환성](https://docs.expo.dev/versions/v55.0.0/), [네이티브 로컬 빌드](https://docs.expo.dev/guides/local-app-development/), [AsyncStorage](https://docs.expo.dev/versions/latest/sdk/async-storage/), [앱 설정](https://docs.expo.dev/versions/latest/config/app/), [언어 설정](https://docs.expo.dev/versions/v55.0.0/sdk/localization/).
+
+## 보존된 웹 회귀 검사
 
 ```sh
 npm run dev
-```
-
-Open `http://127.0.0.1:4173`. Do not open index.html directly as a file; ES modules require a static server. The development server only serves files on localhost and is not a backend. The app uses `crypto.randomUUID`, which requires localhost or HTTPS.
-
-```sh
-npm test
-npm run check
 npm run test:ui
 ```
 
-The first two checks use Node only. Browser smoke checks require Playwright and its Chromium browser already installed. In a normal developer environment, install them locally with `npm install --no-save --package-lock=false playwright` and `npx playwright install chromium`, then run `npm run test:ui`. The Codex runtime installation is also supported. Browser screenshots go to ignored `test-results/`; there is no CI deployment workflow.
+`dev`는 localhost 정적 참고 화면일 뿐 새 제품 배포가 아닙니다. `test:ui`에는 Playwright/Chromium이 필요하며 네이티브 UI를 검사하지 않습니다. Chromium이 없어서 현재 브라우저 검증도 미완료입니다. 반복 다운로드나 네트워크 제한 우회는 하지 않습니다.
 
-Browser setup references: [Playwright library](https://playwright.dev/docs/library) and [browser installation](https://playwright.dev/docs/browsers). The initial development environment could not download a valid Chromium archive, so visual/browser checks are **pending**, not reported as passing.
+## 제한과 다음 단계
 
-## Implemented
+데모의 작성자·장소·가격·성장 표시는 실제 검증된 여행 정보가 아닙니다. 사진 업로드, 지도, GPS/위치 권한, 추적, 광고/분석 SDK, 자동 번역, 서버 인증은 없습니다. 앱 데이터 삭제나 제거 시 기록을 잃을 수 있습니다. OS 백업 비활성 설정은 실제 병합 manifest/기기로 다시 검증해야 합니다. 현재 데모에 대체 불가능한 개인 기록을 저장하지 마세요.
 
-- Korean/English UI, device-language default, saved explicit preference.
-- Four **illustrative** units in manually selected Seoul/Seongsu; bilingual search, time/category/cost filters. The current catalog has one sample region only.
-- Unit details, 1–5 experience points, demo original/translation switch, AI-draft labels.
-- Private local trips, dates, daily schedule, immutable unit-version snapshots, overlap warnings, removal confirmation.
-- Edit schedule day/start/duration, reorder by start time, and manually reserve movement/break estimates after each activity. Conflicts include these estimates; total time cannot cross midnight. Existing snapshots, notes and completion records are preserved.
-- Self-reported completion checklist and private notes, persisted in browser storage.
-- Disabled future HTTP adapter, DTOs and a proposed API contract. The running UI never calls it; CSP blocks network connections.
-- Validation for corrupt storage, quota errors, stale tabs, date ranges and point IDs.
-
-## Deliberate limitations
-
-No accounts, public publishing, real AI generation/translation, map integration, device location, payments, photos, offline installation or native app packaging. Authoring/derivation are upcoming milestones, not functioning buttons disguised as features. Movement/break estimates default to zero and must be entered manually; no route optimization is performed. Review them after reordering. Browser data may be cleared; local mode is not secure multi-user authentication. Until backup/restore is implemented, do not rely on this demo for irreplaceable records. If another tab saved, reload before editing; stale writes are refused.
-
-The four units and authors are demo fixtures, **not verified real travelers or current prices/opening hours**. A sprout/first-hand label in a fixture illustrates the product design only. No completion sends data to anyone or changes public reputation.
-
-## Continue development
-
-Read [AGENTS.md](AGENTS.md), [product decisions](docs/PRODUCT.md), [progress/backlog](docs/PROGRESS.md) and [API contract](docs/API_CONTRACT.md). Keep changes in this repository; preserve user work and only fast-forward commits. Do not implement or connect a server without new user direction.
+다음 작업은 **A02: 기존 일정·완료 로직을 네이티브 화면에 연결**입니다. [AGENTS.md](AGENTS.md), [제품 범위](docs/PRODUCT.md), [진행 기록](docs/PROGRESS.md), [API 계약](docs/API_CONTRACT.md)을 최신 main에서 읽고 계속합니다.

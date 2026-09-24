@@ -4,11 +4,13 @@
 
 Yamone Trip organizes actionable travel units into a trip, then lets users perform 1–5 points, leave notes, suggest improvements or create attributed derivatives. AI may seed initial content, but it must be distinguishable from real experience. UI languages are Korean and English only for now. Device-location functionality is deferred until the user can fund legal review. The user requests hourly client development in this repository, excluding the backend; prepare API interfaces for connection later.
 
-## Initial implementation choice
+## App correction — 2026-09-24 (supersedes the initial web choice)
 
-Start with the previously planned mobile-first web client, with no runtime dependencies. A static developer preview is sufficient; PWA installation/offline packaging is a later milestone. Android/iOS native packaging has NOT been selected or completed. This is not an app-store release.
+The user corrected the initial implementation: this must be an app, not a website. Development now targets an Android native client and an installable APK, following the app-conversion handoff. React Native/Expo is an implementation choice for reusing the existing JavaScript domain and DTOs, not a WebView wrapper or hosted website. iOS, final store identity, release countries and distribution/signing remain unconfirmed. No PWA milestone or web deployment should be pursued. Existing web code is retained as a reference/regression fixture, not the product deliverable.
 
-The first guest mode uses browser local storage for small structured data. It does not register a user, authenticate ownership, publish to others, or prove physical attendance. Local storage can be cleared or fail; warn on failure and provide backup/restore in a subsequent milestone. Do not store secrets in browser storage.
+Native storage uses an app-scoped AsyncStorage namespace, separate from the existing browser data. It is unencrypted local storage, not registration, authentication, publication or proof of attendance. App removal/data clearing can lose records. Android automatic backup is disabled; intentional backup/restore and browser-to-app transfer need validated preview/confirmation later. Never silently copy or erase browser data. Do not store secrets or irreplaceable personal records in the development app.
+
+A01 implements native demo discovery/details and language settings with safe asynchronous storage. Native trips/schedule/checklist screens are the next milestone, not claimed complete. `com.yamone.trip.dev` is only a development package identifier, not a final release decision. Source/bundle checks do not prove APK installation, actual permissions or visual behavior; these remain explicit release gates.
 
 ## Core rules
 
