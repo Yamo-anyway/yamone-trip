@@ -1,9 +1,9 @@
-export const SCHEMA_VERSION = 2;
+export const SCHEMA_VERSION = 3;
 // Domain DTOs cross JSON storage/API boundaries. Do not require browser-only globals.
 const cloneDto = value => JSON.parse(JSON.stringify(value));
 const validId = value => typeof value==='string' && /^[A-Za-z0-9_-]{1,128}$/.test(value);
 export function initialState() {
-  return { schemaVersion:SCHEMA_VERSION, preference:'auto', trips:[], records:{}, localUnits:[], unitDrafts:[] };
+  return { schemaVersion:SCHEMA_VERSION, preference:'auto', trips:[], records:{}, localUnits:[], unitDrafts:[], improvementProposals:[] };
 }
 export function validDate(value) {
   if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
@@ -35,7 +35,22 @@ export function validateUnit(unit) {
     if (!p || typeof p.id!=='string' || !p.id || ids.has(p.id) || !p.text || !Object.values(p.text).every(v=>typeof v==='string') || !Object.values(p.text).some(v=>v.trim())) throw new Error('invalid');
     ids.add(p.id);
   }
+  if (unit.derivedFrom!==undefined && unit.derivedFrom!==null) validateSourceReference(unit.derivedFrom);
   return unit;
+}
+
+export function validateSourceReference(reference) {
+  if (!reference || !validId(reference.unitId) || !validId(reference.versionId) || !Number.isInteger(reference.version) || reference.version<1 ||
+    typeof reference.sourceLocale!=='string' || !/^[A-Za-z]{2,3}(?:-[A-Za-z0-9]{2,8}){0,2}$/.test(reference.sourceLocale) ||
+    typeof reference.title!=='string' || !reference.title.trim() || reference.title.length>120) throw new Error('invalidLineage');
+  return reference;
+}
+
+export function validateImprovementProposal(proposal) {
+  if (!proposal || !validId(proposal.id) || proposal.visibility!=='private' || proposal.status!=='local_only' ||
+    typeof proposal.suggestion!=='string' || !proposal.suggestion.trim() || proposal.suggestion.length>1000) throw new Error('invalidImprovement');
+  validateSourceReference(proposal.source);
+  return proposal;
 }
 export function createTrip({name,startDate,endDate,region},id) {
   if (typeof name!=='string' || !name.trim() || name.trim().length>80 || !region?.country || !region?.city || !region?.district) throw new Error('invalidTrip');
@@ -111,17 +126,24 @@ export function validateUnitDraft(draft) {
     if (!point || !validId(point.id) || pointIds.has(point.id) || typeof point.text!=='string' || !point.text.trim() || point.text.length>300) throw new Error('invalidUnitDraft');
     pointIds.add(point.id);
   }
+  if (draft.derivedFrom!==null) validateSourceReference(draft.derivedFrom);
   return draft;
 }
 
 /** Schema v1 is upgraded in memory; storage is rewritten only by a later explicit user save. */
 export function migrateState(value) {
-  if (value?.schemaVersion===1) return assertState({...cloneDto(value),schemaVersion:SCHEMA_VERSION,localUnits:[],unitDrafts:[]});
+  if (value?.schemaVersion===1) return assertState({...cloneDto(value),schemaVersion:SCHEMA_VERSION,localUnits:[],unitDrafts:[],improvementProposals:[]});
+  if (value?.schemaVersion===2) {
+    const previous=cloneDto(value);
+    return assertState({...previous,schemaVersion:SCHEMA_VERSION,
+      localUnits:previous.localUnits.map(local=>({...local,versions:local.versions.map(version=>({...version,derivedFrom:null}))})),
+      unitDrafts:previous.unitDrafts.map(draft=>({...draft,derivedFrom:null})),improvementProposals:[]});
+  }
   return assertState(value);
 }
 
 export function assertState(state) {
-  if (!state || state.schemaVersion!==SCHEMA_VERSION || !['auto','ko','en'].includes(state.preference) || !Array.isArray(state.trips) || !state.records || typeof state.records!=='object' || Array.isArray(state.records) || !Array.isArray(state.localUnits) || !Array.isArray(state.unitDrafts)) throw new Error('loadError');
+  if (!state || state.schemaVersion!==SCHEMA_VERSION || !['auto','ko','en'].includes(state.preference) || !Array.isArray(state.trips) || !state.records || typeof state.records!=='object' || Array.isArray(state.records) || !Array.isArray(state.localUnits) || !Array.isArray(state.unitDrafts) || !Array.isArray(state.improvementProposals)) throw new Error('loadError');
   const ids=new Set(),tripIds=new Set();
   for (const trip of state.trips) {
     createTrip(trip,trip.id);
@@ -145,9 +167,10 @@ export function assertState(state) {
     if (!local || !validId(local.id) || localIds.has(local.id) || local.visibility!=='private' || !Array.isArray(local.versions) || !local.versions.length) throw new Error('loadError');
     localIds.add(local.id);
     const locale=local.versions[0]?.sourceLocale;
+    const lineage=JSON.stringify(local.versions[0]?.derivedFrom ?? null);
     local.versions.forEach((version,index)=>{
       validateUnit(version);
-      if (version.id!==local.id || version.sourceType!=='user_authored' || version.author!=='local-device' || version.sourceLocale!==locale || version.version!==index+1 || !validId(version.versionId) || versionIds.has(version.versionId)) throw new Error('loadError');
+      if (version.id!==local.id || version.sourceType!=='user_authored' || version.author!=='local-device' || version.sourceLocale!==locale || version.version!==index+1 || !validId(version.versionId) || versionIds.has(version.versionId) || JSON.stringify(version.derivedFrom ?? null)!==lineage) throw new Error('loadError');
       versionIds.add(version.versionId);
     });
   }
@@ -159,8 +182,14 @@ export function assertState(state) {
     if (draft.unitId!==null) {
       const local=state.localUnits.find(unit=>unit.id===draft.unitId);
       const latest=local?.versions.at(-1);
-      if (!latest || latest.versionId!==draft.baseVersionId || latest.sourceLocale!==draft.sourceLocale) throw new Error('loadError');
+      if (!latest || latest.versionId!==draft.baseVersionId || latest.sourceLocale!==draft.sourceLocale || JSON.stringify(latest.derivedFrom ?? null)!==JSON.stringify(draft.derivedFrom)) throw new Error('loadError');
     }
+  }
+  const proposalIds=new Set();
+  for (const proposal of state.improvementProposals) {
+    validateImprovementProposal(proposal);
+    if (proposalIds.has(proposal.id)) throw new Error('loadError');
+    proposalIds.add(proposal.id);
   }
   return state;
 }

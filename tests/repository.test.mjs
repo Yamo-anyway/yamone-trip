@@ -14,14 +14,16 @@ test('schema 1 state migrates in memory and is rewritten only after an explicit 
   const legacy={...initialState(),schemaVersion:1};
   delete legacy.localUnits;
   delete legacy.unitDrafts;
+  delete legacy.improvementProposals;
   const raw=JSON.stringify(legacy);
   storage.setItem(STORAGE_KEY,raw);
   const repo=new LocalRepository(storage);
   const loaded=repo.load();
-  assert.equal(loaded.schemaVersion,2);
+  assert.equal(loaded.schemaVersion,3);
   assert.deepEqual(loaded.localUnits,[]);
   assert.deepEqual(loaded.unitDrafts,[]);
   assert.equal(storage.getItem(STORAGE_KEY),raw);
   repo.save(loaded);
-  assert.equal(JSON.parse(storage.getItem(STORAGE_KEY)).schemaVersion,2);
+  assert.deepEqual(loaded.improvementProposals,[]);
+  assert.equal(JSON.parse(storage.getItem(STORAGE_KEY)).schemaVersion,3);
 });

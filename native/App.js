@@ -11,6 +11,7 @@ import { filterUnits, findConflicts, scheduleEnd, sortedItems, timeOf } from '..
 import { costLabel, dictionaries, resolveLocale, textFor } from '../src/i18n.js';
 import { addUnitToTrip, createPrivateTrip, editTripItem, saveExperienceRecord } from './actions.js';
 import { deleteUnitDraft, draftFromLatest, makeUnitDraft, publishUnitDraft, saveUnitDraft } from './authoring.js';
+import { deleteImprovementProposal, makeImprovementProposal, saveImprovementProposal, sourceReference } from './lineage.js';
 import { createBackup, parseBackup } from './backup.js';
 import { exportBackupFile, isPickerCancellation, pickBackupFile } from './backup-files.js';
 import { beginDraft, changeDraft, hasUnsavedChanges } from './drafts.js';
@@ -21,7 +22,7 @@ import { nativeCopy } from './copy.js';
 // No remote adapter, browser, map, upload or location module is imported here.
 const repository = new NativeRepository(AsyncStorage);
 const demoRegion = {country:'KR', city:'seoul', district:'seongsu'};
-const appVersion = '0.6.0';
+const appVersion = '0.7.0';
 
 function Text({style, ...props}) {
   return <NativeText {...props} style={[{color:'#182d25'}, style]} />;
@@ -163,12 +164,12 @@ function Client() {
     openEditor('unitDraft', {
       sourceLocale:locale, title:'', description:'', place:'', tip:'', category:'walk',
       durationMinutes:'30', costAmount:'0', currency:'KRW', points:[{id:pointId,text:''}],
-    }, {draftId,unitId:null,baseVersionId:null});
+    }, {draftId,unitId:null,baseVersionId:null,derivedFrom:null});
   }
 
   function resumeUnitDraft(draft) {
     openEditor('unitDraft',unitDraftForEditor(draft),{
-      draftId:draft.id,unitId:draft.unitId,baseVersionId:draft.baseVersionId,
+      draftId:draft.id,unitId:draft.unitId,baseVersionId:draft.baseVersionId,derivedFrom:draft.derivedFrom,
     });
   }
 
@@ -201,7 +202,7 @@ function Client() {
   function currentUnitDraft() {
     return makeUnitDraft({...editor.draft,region:demoRegion},{
       draftId:editor.context.draftId, unitId:editor.context.unitId,
-      baseVersionId:editor.context.baseVersionId,
+      baseVersionId:editor.context.baseVersionId, derivedFrom:editor.context.derivedFrom,
     });
   }
 
@@ -227,6 +228,46 @@ function Client() {
 
   async function removeSavedDraft() {
     await commit(current=>deleteUnitDraft(current,editor.context.draftId),'unitDraftDeleted',()=>{setPage('mine');});
+  }
+
+  function startImprovement(target) {
+    try { openEditor('improvement',{suggestion:''},{source:sourceReference(target),unit:target}); }
+    catch { setFormError('invalidLineage'); }
+  }
+
+  async function saveImprovement() {
+    let proposal;
+    try {
+      const existing=state.improvementProposals.map(item=>item.id);
+      proposal=makeImprovementProposal(editor.context.unit,editor.draft.suggestion,ids.next('improvement',existing));
+    } catch { setFormError('invalidImprovement'); return; }
+    await commit(current=>saveImprovementProposal(current,proposal),'improvementSaved',()=>{setPage('mine');setUnit(null);});
+  }
+
+  function confirmDeleteImprovement(proposal) {
+    openEditor('deleteImprovement',{}, {proposalId:proposal.id,source:proposal.source});
+  }
+
+  async function removeImprovement() {
+    await commit(current=>deleteImprovementProposal(current,editor.context.proposalId),'improvementDeleted',()=>{setPage('mine');});
+  }
+
+  function startDerivative(target) {
+    try {
+      const reference=sourceReference(target);
+      const draftId=ids.next('draft',state.unitDrafts.map(draft=>draft.id));
+      const used=allPointIds();
+      const pointIds=target.points.map(()=>{
+        const next=ids.next('point',used); used.push(next); return next;
+      });
+      const sourceText=value=>value[target.sourceLocale] ?? Object.values(value)[0] ?? '';
+      openEditor('unitDraft',{
+        sourceLocale:target.sourceLocale,title:sourceText(target.title),description:sourceText(target.description),
+        place:sourceText(target.place),tip:sourceText(target.tip),category:target.category,
+        durationMinutes:String(target.durationMinutes),costAmount:String(target.cost.amount),currency:target.cost.currency,
+        points:target.points.map((point,index)=>({id:pointIds[index],text:sourceText(point.text)})),
+      },{draftId,unitId:null,baseVersionId:null,derivedFrom:reference});
+    } catch { setFormError('invalidLineage'); }
   }
 
   async function exportLocalBackup() {
@@ -376,6 +417,12 @@ function Client() {
     if (editor.kind === 'unitDraft') return <View style={styles.card}>
       <Text accessibilityRole="header" style={styles.title}>{editor.context.unitId?n.editLocalUnit:n.newLocalUnit}</Text>
       <Text style={styles.badge}>{n.localPrivateUnverified}</Text><Text>{n.localUnitHelp}</Text>
+      {editor.context.derivedFrom ? <View style={styles.preview}>
+        <Text style={styles.badge}>{n.derivativeDraft}</Text>
+        <Text>{n.derivedFrom}: {editor.context.derivedFrom.title}</Text>
+        <Text style={styles.muted}>{editor.context.derivedFrom.unitId} / {editor.context.derivedFrom.versionId}</Text>
+        <Text>{n.derivativeAttributionHelp}</Text>
+      </View> : null}
       {editor.context.unitId ? <Text>{n.source}: {editor.draft.sourceLocale} · {n.basedOnVersion}: {editor.context.baseVersionId}</Text> : <>
         <Text style={styles.label}>{n.originalLocale}</Text>
         <View style={styles.row}><Button title="한국어 (ko)" selected={editor.draft.sourceLocale==='ko'} onPress={()=>updateDraft('sourceLocale','ko')} /><Button title="English (en)" selected={editor.draft.sourceLocale==='en'} onPress={()=>updateDraft('sourceLocale','en')} /></View>
@@ -407,6 +454,23 @@ function Client() {
       <Text accessibilityRole="header" style={styles.title}>{n.deleteDraftTitle}</Text>
       <Text>{editor.context.title}</Text><Text>{n.deleteDraftBody}</Text>
       <Button title={n.deleteDraft} danger onPress={removeSavedDraft} disabled={busy} />
+      <Button title={t.cancel} onPress={()=>requestLeave()} />
+    </View>;
+    if (editor.kind === 'improvement') return <View style={styles.card}>
+      <Text accessibilityRole="header" style={styles.title}>{n.proposeImprovement}</Text>
+      <Text style={styles.badge}>{n.localProposal}</Text>
+      <Text>{n.proposalSource}: {editor.context.source.title}</Text>
+      <Text style={styles.muted}>{editor.context.source.unitId} / {editor.context.source.versionId}</Text>
+      <Text>{n.improvementHelp}</Text>
+      <Field label={n.improvementText} value={editor.draft.suggestion} onChangeText={value=>updateDraft('suggestion',value)} multiline maxLength={1000} />
+      {errorText ? <Text accessibilityRole="alert" style={styles.error}>{errorText}</Text> : null}
+      <Button title={n.saveImprovement} onPress={saveImprovement} disabled={busy} />
+      <Button title={t.cancel} onPress={()=>requestLeave()} />
+    </View>;
+    if (editor.kind === 'deleteImprovement') return <View style={styles.card} accessibilityViewIsModal>
+      <Text accessibilityRole="header" style={styles.title}>{n.deleteImprovementTitle}</Text>
+      <Text>{editor.context.source.title}</Text><Text>{n.deleteImprovementBody}</Text>
+      <Button title={n.deleteImprovement} danger onPress={removeImprovement} disabled={busy} />
       <Button title={t.cancel} onPress={()=>requestLeave()} />
     </View>;
     if (editor.kind === 'add') return <View style={styles.card}>
@@ -464,6 +528,11 @@ function Client() {
       <Text>{sourceLabel}</Text>
       <Text>{t.author}: {unit.sourceType==='user_authored'?n.localDevice:unit.author} · {t.version} {unit.version}</Text>
       <Text style={styles.muted}>{unit.id} / {unit.versionId}</Text><Text>{n.source}: {unit.sourceLocale}</Text>
+      {unit.derivedFrom ? <View style={styles.preview}>
+        <Text style={styles.badge}>{n.attributedDerivative}</Text>
+        <Text>{n.derivedFrom}: {unit.derivedFrom.title} · {t.version} {unit.derivedFrom.version}</Text>
+        <Text style={styles.muted}>{unit.derivedFrom.unitId} / {unit.derivedFrom.versionId}</Text>
+      </View> : null}
       <Text>{originalView ? t.original : t.translation}</Text>
       {translated ? <Button title={original ? t.viewTranslated : t.viewOriginal} onPress={() => setOriginal(!original)} /> : null}
       <Text>{localized(unit.description)}</Text><Text>{localized(unit.place)}</Text>
@@ -472,6 +541,8 @@ function Client() {
       {unit.points.map((point, index) => <Text key={point.id}>{index + 1}. {localized(point.text)}</Text>)}
       <Text style={styles.subtitle}>{t.tip}</Text><Text>{localized(unit.tip)}</Text>
       <Button title={t.add} onPress={() => startAddToTrip(unit)} />
+      <Button title={n.proposeImprovement} onPress={()=>startImprovement(unit)} />
+      <Button title={n.createDerivative} onPress={()=>startDerivative(unit)} />
     </View>;
   }
 
@@ -539,6 +610,14 @@ function Client() {
     return <>
       <Text accessibilityRole="header" style={styles.title}>{t.mine}</Text><Text>{n.myUnitsHelp}</Text>
       <Button title={n.newLocalUnit} onPress={startNewUnit} />
+      {state.improvementProposals.length ? <Text style={styles.subtitle}>{n.savedImprovements}</Text> : null}
+      {state.improvementProposals.map(proposal=><View key={proposal.id} style={styles.card}>
+        <Text style={styles.badge}>{n.localProposal}</Text>
+        <Text style={styles.subtitle}>{proposal.source.title}</Text>
+        <Text>{n.proposalSource}: {proposal.source.unitId} / {proposal.source.versionId}</Text>
+        <Text>{proposal.suggestion}</Text>
+        <Button title={n.deleteImprovement} danger onPress={()=>confirmDeleteImprovement(proposal)} />
+      </View>)}
       {state.unitDrafts.length ? <Text style={styles.subtitle}>{n.savedDrafts}</Text> : null}
       {state.unitDrafts.map(draft=><View key={draft.id} style={styles.card}>
         <Text style={styles.badge}>{n.localPrivateDraft}</Text><Text style={styles.subtitle}>{draft.title}</Text>
@@ -551,9 +630,10 @@ function Client() {
         const latest=local.versions[local.versions.length-1];
         const hasDraft=state.unitDrafts.some(draft=>draft.unitId===local.id);
         return <View key={local.id} style={styles.card}>
-          <Text style={styles.badge}>{n.localPrivateUnverified}</Text>
+          <Text style={styles.badge}>{latest.derivedFrom?n.attributedDerivative:n.localPrivateUnverified}</Text>
           <Text style={styles.subtitle}>{textFor(latest.title,locale,latest.sourceLocale)}</Text>
           <Text>{n.versionCount}: {local.versions.length} · {n.source}: {latest.sourceLocale}</Text>
+          {latest.derivedFrom ? <Text>{n.derivedFrom}: {latest.derivedFrom.title} · {latest.derivedFrom.versionId}</Text> : null}
           {local.versions.map(version=><Button key={version.versionId} title={`${t.version} ${version.version} · ${textFor(version.title,locale,version.sourceLocale)}`} onPress={()=>{setOriginal(false);setUnit(version);}} />)}
           {hasDraft ? <Text>{n.nextVersionDraftExists}</Text> : <Button title={n.createNextVersion} onPress={()=>startNextVersion(local)} />}
         </View>;
@@ -579,10 +659,10 @@ function Client() {
         {preview ? <View style={styles.preview} accessibilityLiveRegion="polite">
           <Text style={styles.subtitle}>{n.backupPreview}</Text>
           <Text>{n.backupFile}: {backupCandidate.fileName}</Text>
-          <Text>{n.backupSource}: {preview.source === 'legacy_raw_v1' ? n.backupLegacy : preview.source === 'raw_state_v2' ? n.backupRaw : n.backupCurrent}</Text>
+          <Text>{n.backupSource}: {preview.source === 'legacy_raw_v1' ? n.backupLegacy : preview.source.startsWith('raw_state_v') ? n.backupRaw : n.backupCurrent}</Text>
           <Text>{n.backupCreated}: {preview.createdAt ?? n.backupUnknownDate}</Text>
           <Text>{n.backupCounts}: {preview.tripCount} / {preview.itemCount} / {preview.recordCount}</Text>
-          <Text>{n.backupAuthorCounts}: {preview.localUnitCount} / {preview.draftCount}</Text>
+          <Text>{n.backupAuthorCounts}: {preview.localUnitCount} / {preview.draftCount} / {preview.improvementCount}</Text>
           <Text style={styles.error}>{n.backupReplaceWarning}</Text>
           <Button title={n.confirmImport} danger onPress={confirmBackupImport} disabled={busy || !!error} />
           <Button title={t.cancel} onPress={() => {setBackupCandidate(null); setBackupError('');}} disabled={busy} />

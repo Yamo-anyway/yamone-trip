@@ -26,8 +26,15 @@ function cleanLocalized(value) {
   return Object.fromEntries(entries);
 }
 
-function cleanUnit(unit) {
+function cleanReference(reference) {
   return {
+    unitId:reference.unitId,versionId:reference.versionId,version:reference.version,
+    sourceLocale:reference.sourceLocale,title:reference.title,
+  };
+}
+
+function cleanUnit(unit) {
+  const clean = {
     id:unit.id, versionId:unit.versionId, version:unit.version, sourceLocale:unit.sourceLocale,
     sourceType:unit.sourceType, growth:unit.growth, author:unit.author,
     region:{country:unit.region.country, city:unit.region.city, district:unit.region.district},
@@ -36,11 +43,14 @@ function cleanUnit(unit) {
     description:cleanLocalized(unit.description), place:cleanLocalized(unit.place), tip:cleanLocalized(unit.tip),
     points:unit.points.map(point => ({id:point.id, text:cleanLocalized(point.text)})),
   };
+  if (unit.derivedFrom!==undefined) clean.derivedFrom=unit.derivedFrom===null?null:cleanReference(unit.derivedFrom);
+  return clean;
 }
 
 function cleanDraft(draft) {
   return {
     id:draft.id, unitId:draft.unitId, baseVersionId:draft.baseVersionId, visibility:'private',
+    derivedFrom:draft.derivedFrom===null?null:cleanReference(draft.derivedFrom),
     sourceLocale:draft.sourceLocale,
     region:{country:draft.region.country, city:draft.region.city, district:draft.region.district},
     category:draft.category, transport:draft.transport, durationMinutes:draft.durationMinutes,
@@ -75,6 +85,9 @@ export function canonicalState(value) {
       id:local.id, visibility:'private', versions:local.versions.map(cleanUnit),
     })),
     unitDrafts:current.unitDrafts.map(cleanDraft),
+    improvementProposals:current.improvementProposals.map(proposal=>({
+      id:proposal.id,visibility:'private',status:'local_only',source:cleanReference(proposal.source),suggestion:proposal.suggestion,
+    })),
   };
   assertState(state);
   return state;
@@ -106,6 +119,7 @@ export function backupPreview(state, metadata = {}) {
     appVersion:metadata.appVersion ?? null, preference:state.preference,
     tripCount:state.trips.length, itemCount, recordCount:Object.keys(state.records).length,
     localUnitCount:state.localUnits.length, draftCount:state.unitDrafts.length,
+    improvementCount:state.improvementProposals.length,
   };
 }
 
@@ -122,9 +136,9 @@ export function parseBackup(text) {
       return {state:copy(state), preview:backupPreview(state, {createdAt:value.createdAt, appVersion:value.appVersion})};
     }
     // Explicit import path for raw local/browser state. Schema v1 migrates in memory.
-    if ([1,SCHEMA_VERSION].includes(value?.schemaVersion)) {
+    if ([1,2,SCHEMA_VERSION].includes(value?.schemaVersion)) {
       const state = canonicalState(value);
-      const source=value.schemaVersion===1?'legacy_raw_v1':'raw_state_v2';
+      const source=value.schemaVersion===1?'legacy_raw_v1':`raw_state_v${value.schemaVersion}`;
       return {state:copy(state), preview:backupPreview(state, {source})};
     }
     throw new Error('backupVersion');

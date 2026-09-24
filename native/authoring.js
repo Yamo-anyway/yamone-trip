@@ -4,9 +4,9 @@ const copy = value => JSON.parse(JSON.stringify(value));
 const whole = value => typeof value==='number' ? value : /^\d+$/.test(value) ? Number(value) : Number.NaN;
 const amount = value => typeof value==='number' ? value : /^\d+(?:\.\d{1,2})?$/.test(value) ? Number(value) : Number.NaN;
 
-export function makeUnitDraft(input, {draftId, unitId = null, baseVersionId = null}) {
+export function makeUnitDraft(input, {draftId, unitId = null, baseVersionId = null, derivedFrom = null}) {
   const draft={
-    id:draftId, unitId, baseVersionId, visibility:'private',
+    id:draftId, unitId, baseVersionId, visibility:'private', derivedFrom:copy(derivedFrom),
     sourceLocale:typeof input.sourceLocale==='string'?input.sourceLocale.trim():'',
     region:copy(input.region), category:input.category, transport:'walk',
     durationMinutes:whole(input.durationMinutes),
@@ -43,6 +43,7 @@ export function draftFromLatest(state, unitId, draftId) {
   const locale=latest.sourceLocale;
   return validateUnitDraft({
     id:draftId, unitId, baseVersionId:latest.versionId, visibility:'private', sourceLocale:locale,
+    derivedFrom:copy(latest.derivedFrom ?? null),
     region:copy(latest.region), category:latest.category, transport:'walk', durationMinutes:latest.durationMinutes,
     cost:copy(latest.cost), title:latest.title[locale], description:latest.description[locale],
     place:latest.place[locale], tip:latest.tip[locale],
@@ -65,6 +66,7 @@ export function publishUnitDraft(state, draft, {newUnitId = null, versionId}) {
     durationMinutes:saved.durationMinutes, cost:copy(saved.cost), title:{[locale]:saved.title},
     description:{[locale]:saved.description}, place:{[locale]:saved.place}, tip:{[locale]:saved.tip},
     points:saved.points.map(point=>({id:point.id,text:{[locale]:point.text}})),
+    derivedFrom:copy(saved.derivedFrom),
   });
   const localUnits=existing
     ? withDraft.localUnits.map(unit=>unit.id===id?{...unit,versions:[...unit.versions,copy(version)]}:unit)

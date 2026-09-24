@@ -1,8 +1,8 @@
-# Future API contract — proposal v0.3
+# Future API contract — proposal v0.4
 
 This is a handoff proposal, not a deployed API or a backend implementation. All UI data currently comes from local fixtures/storage. `src/api.js` is disabled by default and is not imported by the UI. `src/contracts.d.ts` defines matching data shapes without requiring a TypeScript build.
 
-## Native boundary — v0.6.0
+## Native boundary — v0.7.0
 
 The primary client is now the Android native app in `native/`; the web UI is a retained reference only. Native screens do not import `src/api.js` or any remote transport. `NativeRepository` uses an injected asynchronous key/value interface (`getItem`, `setItem`) with one application-scoped writer, validated reads and serialized transactions. Preferences must preserve all trips, snapshots and records. Failed/ambiguous writes require reload; parse/schema errors must never become empty-state writes. This is local sequencing, NOT an atomic multi-process or server revision protocol.
 
@@ -15,6 +15,14 @@ Local authoring creates private device-only drafts and immutable `UnitVersion` r
 `sourceType: user_authored`, `author: local-device`, local IDs, seed growth and the UI's “unverified/local” labels are client placeholders only. They are not server authorship, ownership, publication, factual review, attendance or growth evidence. The local editor does not create translations or derivatives. A future server must issue authoritative identities, authorize authorship, define draft/revision conflicts and decide how local histories reconcile without trusting client-supplied author or growth fields.
 
 The proposed future create/version payload may reuse `UnitVersion` content fields but must exclude client authority fields (`author`, `growth`, server version numbers). It must carry an idempotency key and an explicit base version/revision for later versions. Publication is a separate future decision; a local save must never be reported as public.
+
+### M05 improvement and derivative boundary
+
+An improvement proposal is a separate private local object with its own opaque ID, `local_only` status, suggestion text and an exact source reference (`unitId`, `versionId`, source version number, original locale and display title). Saving or deleting it never edits the referenced unit/version. The current client does not submit it, notify an author or claim that anyone reviewed it. A future submission endpoint must authorize the target, issue authoritative identity/revision data and return a real delivery state before the UI may claim it was sent.
+
+An attributed derivative creates a new local unit ID, new version ID and new experience-point IDs. Its immutable version stores the exact immediate source reference above. Later versions of that derivative must keep the same reference. The source can be a demo or local version; it need not remain mutable or available for the attribution to display. This local reference is not proof of ownership or permission, and future rights/takedown rules may require redaction.
+
+A translation must never populate `derivedFrom`: it keeps the original unit/version identity and maps the same point IDs. No improvement or derivative endpoint is active. Proposed future writes require authentication, ownership/permission checks, idempotency and revision conflict handling; client-supplied author, growth and delivery status are never authoritative.
 
 ### M03 backup/import boundary
 
@@ -80,7 +88,7 @@ Expected error families: 400/422 validation, 401 reauthenticate, 403 owner/permi
 
 ## Later content endpoints — design slots, not ready implementations
 
-Improvement proposal, attributed derivative, and translation request/read will be specified with those client milestones. Local author/version behavior is defined above but no endpoint is active. A derivative gets a new unit ID and explicit source unit/version attribution. A translation shares the original unit/version and maps stable point IDs; it never becomes a new derivative. Preserve original-language text. Machine translation must be labeled and have an original toggle. Only public unit text should enter translation by default; exclude private trip records and account data.
+Translation request/read will be specified with that client milestone. Local author/version and M05 lineage behavior are defined above but no endpoint is active. A translation shares the original unit/version and maps stable point IDs; it never becomes a new derivative. Preserve original-language text. Machine translation must be labeled and have an original toggle. Only public unit text should enter translation by default; exclude private trip records and account data.
 
 Growth promotion must be computed by the server from authorized, abuse-resistant events. Do not trust client completion as proof of attendance; no thresholds beyond confirmed product rules may be invented. Rights/privacy removals must propagate to snapshots and caches as appropriate, despite ordinary version immutability.
 

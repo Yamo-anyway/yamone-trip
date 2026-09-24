@@ -13,6 +13,7 @@ export interface UnitVersion {
   durationMinutes: number; cost: { amount: number; currency: string };
   title: LocalizedText; description: LocalizedText; place: LocalizedText; tip: LocalizedText;
   points: ExperiencePoint[]; // 1–5, unique stable IDs within a version
+  derivedFrom?: DerivationReference | null; // exact immediate source for a derivative; translations never use this
 }
 export interface ScheduleItem {
   id: string; date: LocalDate; startTime: LocalTime; durationMinutes: number;
@@ -34,7 +35,13 @@ export interface ExperienceRecord {
 }
 export interface Page<T> { items: T[]; nextCursor: string | null }
 export interface ApiFailure { error: { code: string; message: string; requestId?: string } }
-export interface DerivationReference { unitId: string; versionId: string; attribution: string }
+export interface DerivationReference {
+  unitId: string; versionId: string; version: number; sourceLocale: string; title: string;
+}
+export interface ImprovementProposal {
+  id: string; visibility: 'private'; status: 'local_only';
+  source: DerivationReference; suggestion: string;
+}
 export interface TranslationVariant {
   unitId: string; versionId: string; locale: UiLocale;
   method: 'human' | 'machine'; reviewed: boolean;

@@ -4,6 +4,7 @@ import { catalog } from '../src/catalog.js';
 import { addItem, createRecord, createTrip, initialState } from '../src/domain.js';
 import { BACKUP_FORMAT, MAX_BACKUP_BYTES, canonicalState, createBackup, parseBackup } from '../native/backup.js';
 import { draftFromLatest, makeUnitDraft, publishUnitDraft, saveUnitDraft } from '../native/authoring.js';
+import { derivativeDraftFrom, makeImprovementProposal, saveImprovementProposal } from '../native/lineage.js';
 
 function populatedState() {
   let trip = createTrip({
@@ -24,7 +25,7 @@ test('native backup round trip preserves private trips, exact snapshots and note
   assert.deepEqual(parsed.state, canonicalState(state));
   assert.equal(parsed.state.trips[0].items[0].unitVersionId, catalog[0].versionId);
   assert.equal(parsed.state.records['backup-item'].note, 'Synthetic private note');
-  assert.deepEqual(parsed.preview, {source:'backup_v1', ...options, preference:'en', tripCount:1, itemCount:1, recordCount:1, localUnitCount:0, draftCount:0});
+  assert.deepEqual(parsed.preview, {source:'backup_v1', ...options, preference:'en', tripCount:1, itemCount:1, recordCount:1, localUnitCount:0, draftCount:0, improvementCount:0});
 });
 
 test('backup envelope is versioned and contains no account, sync or publication claim', () => {
@@ -41,7 +42,17 @@ test('legacy raw schema-v1 import is explicit and gets a privacy-safe preview', 
   assert.equal(parsed.preview.createdAt, null);
   assert.equal(parsed.preview.recordCount, 1);
   assert(!('note' in parsed.preview)); assert.deepEqual(parsed.state, canonicalState(state));
-  assert.equal(parsed.state.schemaVersion,2); assert.deepEqual(parsed.state.localUnits,[]);
+  assert.equal(parsed.state.schemaVersion,3); assert.deepEqual(parsed.state.localUnits,[]); assert.deepEqual(parsed.state.improvementProposals,[]);
+});
+
+test('raw schema-v2 import adds empty improvement storage without changing the source object',()=>{
+  const current=initialState();
+  const {improvementProposals,...legacy}=current; legacy.schemaVersion=2;
+  const parsed=parseBackup(JSON.stringify(legacy));
+  assert.equal(parsed.preview.source,'raw_state_v2');
+  assert.equal(parsed.state.schemaVersion,3);
+  assert.deepEqual(parsed.state.improvementProposals,[]);
+  assert.equal(legacy.schemaVersion,2);
 });
 
 test('canonical import drops unknown envelope and nested fields before persistence', () => {
@@ -88,4 +99,24 @@ test('backup round trip preserves local immutable versions and private authoring
   state=saveUnitDraft(state,draftFromLatest(state,'author-unit','author-v2-draft'));
   const parsed=parseBackup(createBackup(state,options));
   assert.deepEqual(parsed.state,state); assert.equal(parsed.preview.localUnitCount,1); assert.equal(parsed.preview.draftCount,1);
+});
+
+test('backup round trip preserves attributed derivatives and private improvements',()=>{
+  const source=catalog[0], locale=source.sourceLocale;
+  const original=value=>value[locale] ?? Object.values(value)[0];
+  const derivative=derivativeDraftFrom(source,{
+    title:`${original(source.title)} derivative`,description:original(source.description),place:original(source.place),
+    tip:original(source.tip),points:source.points.map(point=>original(point.text)),
+  },{draftId:'derived-draft',pointIds:source.points.map((_,index)=>`backup-derived-point-${index}`)});
+  let state=publishUnitDraft(initialState(),derivative,{newUnitId:'backup-derived-unit',versionId:'backup-derived-v1'});
+  state=saveImprovementProposal(state,makeImprovementProposal(source,'Clarify this demo detail.','backup-improvement'));
+  const envelope=JSON.parse(createBackup(state,options));
+  envelope.state.localUnits[0].versions[0].derivedFrom.injected='drop-me';
+  envelope.state.improvementProposals[0].source.injected='drop-me';
+  const parsed=parseBackup(JSON.stringify(envelope));
+  assert.deepEqual(parsed.state,state);
+  assert.equal(parsed.preview.improvementCount,1);
+  assert.equal(parsed.state.localUnits[0].versions[0].derivedFrom.versionId,source.versionId);
+  assert(!('injected' in parsed.state.localUnits[0].versions[0].derivedFrom));
+  assert(!('injected' in parsed.state.improvementProposals[0].source));
 });

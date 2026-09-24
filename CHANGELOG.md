@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.7.0 — 2026-09-25
+
+- M05: added private local improvement proposals bound to an exact source unit/version. Saving or deleting a proposal never changes the source and the UI explicitly says it was not sent to an author or server.
+- Added attributed derivative authoring from demo or local unit details. A derivative receives a new unit/version and new experience-point IDs while retaining the exact immediate source unit ID, version ID, original locale and title.
+- Derivative attribution is shown in the editor, My units and unit details, remains immutable across later versions, survives trip snapshots and round-trips through validated backup/restore. Translation remains a separate same-identity concept and does not create lineage.
+- State schema v3 adds improvement proposals and lineage. Existing schema-v1/v2 data migrates in memory, remains untouched until an explicit write and can still be imported through preview/confirmation.
+- Validation: `npm test` **90/90 passed**; `npm run check` passed; Android Metro/Hermes bundle passed (612 modules); offline Android source prebuild passed with v0.7.0/code 7. `npm run test:ui` was attempted and blocked before launch by missing Chromium and covers only the retained web reference. Android SDK, adb, Gradle installation and a JDK compiler remain unavailable, so no APK, merged manifest, native UI or device pass is claimed.
+
 ## 0.6.0 — 2026-09-25
 
 - M04: added native private local-unit drafts and immutable authored versions. The editor accepts an explicit original locale, title/details and 1–5 experience points without creating an account or public post.
