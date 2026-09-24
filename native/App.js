@@ -17,22 +17,31 @@ import { createBackup, parseBackup } from './backup.js';
 import { exportBackupFile, isPickerCancellation, pickBackupFile } from './backup-files.js';
 import { beginDraft, changeDraft, hasUnsavedChanges } from './drafts.js';
 import { createIdGenerator } from './ids.js';
+import { BACK_ACTION, resolveBackAction } from './navigation.js';
 import { NativeRepository } from './storage.js';
 import { nativeCopy } from './copy.js';
 
 // No remote adapter, browser, map, upload or location module is imported here.
 const repository = new NativeRepository(AsyncStorage);
 const demoRegion = {country:'KR', city:'seoul', district:'seongsu'};
-const appVersion = '0.9.0';
+const appVersion = '0.10.0';
 
 function Text({style, ...props}) {
-  return <NativeText {...props} style={[{color:'#182d25'}, style]} />;
+  return <NativeText {...props} allowFontScaling={true} style={[{color:'#182d25'}, style]} />;
 }
 
-function Button({title, onPress, disabled = false, selected = false, danger = false}) {
-  return <Pressable accessibilityRole="button" accessibilityState={{disabled, selected}}
+function Button({title, onPress, disabled = false, selected = false, checked, danger = false,
+  role = 'button', accessibilityLabel = title, accessibilityHint, style}) {
+  const checkable = role === 'checkbox' || role === 'radio';
+  const selectable = role === 'tab' || (!checkable && selected);
+  const accessibilityState = {disabled,
+    ...(checkable ? {checked:checked ?? selected} : {}),
+    ...(selectable ? {selected} : {}),
+  };
+  return <Pressable accessibilityRole={role} accessibilityLabel={accessibilityLabel}
+    accessibilityHint={accessibilityHint} accessibilityState={accessibilityState}
     disabled={disabled} onPress={onPress}
-    style={({pressed}) => [styles.button, selected && styles.selected, danger && styles.danger, (disabled || pressed) && styles.dim]}>
+    style={({pressed}) => [styles.button, style, selected && styles.selected, danger && styles.danger, (disabled || pressed) && styles.dim]}>
     <Text style={[styles.buttonText, selected && styles.selectedText, danger && styles.dangerText]}>{title}</Text>
   </Pressable>;
 }
@@ -40,7 +49,7 @@ function Button({title, onPress, disabled = false, selected = false, danger = fa
 function Field({label, value, onChangeText, keyboardType = 'default', multiline = false, maxLength = 120}) {
   return <View style={styles.field}>
     <Text style={styles.label}>{label}</Text>
-    <TextInput accessibilityLabel={label} value={value} onChangeText={onChangeText} keyboardType={keyboardType}
+    <TextInput accessibilityLabel={label} allowFontScaling={true} value={value} onChangeText={onChangeText} keyboardType={keyboardType}
       multiline={multiline} maxLength={maxLength} style={[styles.input, multiline && styles.noteInput]}
       autoCapitalize="none" autoCorrect={false} />
   </View>;
@@ -429,11 +438,16 @@ function Client() {
   useEffect(() => { void load(); }, []);
   useEffect(() => {
     const subscription = BackHandler.addEventListener('hardwareBackPress', () => {
-      if (discardPrompt) { setDiscardPrompt(false); pendingLeave.current = null; return true; }
-      if (editor) { requestLeave(); return true; }
-      if (unit) { setUnit(null); return true; }
-      if (page === 'trips' && selectedTripId) { setSelectedTripId(null); return true; }
-      if (page !== 'discover') { setPage('discover'); return true; }
+      const action = resolveBackAction({
+        discardPrompt, editorOpen:!!editor, editorDirty, unitOpen:!!unit,
+        page, tripOpen:!!selectedTripId,
+      });
+      if (action === BACK_ACTION.dismissDiscard) { setDiscardPrompt(false); pendingLeave.current = null; return true; }
+      if (action === BACK_ACTION.confirmDiscard) { requestLeave(); return true; }
+      if (action === BACK_ACTION.closeEditor) { setEditor(null); setFormError(''); return true; }
+      if (action === BACK_ACTION.closeUnit) { setUnit(null); return true; }
+      if (action === BACK_ACTION.closeTrip) { setSelectedTripId(null); return true; }
+      if (action === BACK_ACTION.openDiscover) { setPage('discover'); return true; }
       return false;
     });
     return () => subscription.remove();
@@ -471,7 +485,7 @@ function Client() {
       </View> : null}
       {editor.context.unitId ? <Text>{n.source}: {editor.draft.sourceLocale} · {n.basedOnVersion}: {editor.context.baseVersionId}</Text> : <>
         <Text style={styles.label}>{n.originalLocale}</Text>
-        <View style={styles.row}><Button title="한국어 (ko)" selected={editor.draft.sourceLocale==='ko'} onPress={()=>updateDraft('sourceLocale','ko')} /><Button title="English (en)" selected={editor.draft.sourceLocale==='en'} onPress={()=>updateDraft('sourceLocale','en')} /></View>
+        <View style={styles.row}><Button role="radio" title="한국어 (ko)" selected={editor.draft.sourceLocale==='ko'} onPress={()=>updateDraft('sourceLocale','ko')} /><Button role="radio" title="English (en)" selected={editor.draft.sourceLocale==='en'} onPress={()=>updateDraft('sourceLocale','en')} /></View>
         <Field label={n.localeCode} value={editor.draft.sourceLocale} onChangeText={value=>updateDraft('sourceLocale',value)} maxLength={15} />
       </>}
       <Text>{t.korea} · {t.seoul} · {t.seongsu} · {n.manualRegion}</Text>
@@ -479,7 +493,7 @@ function Client() {
       <Field label={n.unitDescription} value={editor.draft.description} onChangeText={value=>updateDraft('description',value)} multiline maxLength={1000} />
       <Field label={n.unitPlace} value={editor.draft.place} onChangeText={value=>updateDraft('place',value)} maxLength={300} />
       <Field label={t.tip} value={editor.draft.tip} onChangeText={value=>updateDraft('tip',value)} multiline maxLength={500} />
-      <Text style={styles.label}>{t.category}</Text><View style={styles.row}>{['walk','cafe','sightseeing'].map(category=><Button key={category} title={t[category]} selected={editor.draft.category===category} onPress={()=>updateDraft('category',category)} />)}</View>
+      <Text style={styles.label}>{t.category}</Text><View style={styles.row}>{['walk','cafe','sightseeing'].map(category=><Button key={category} role="radio" title={t[category]} selected={editor.draft.category===category} onPress={()=>updateDraft('category',category)} />)}</View>
       <Field label={t.plannedDuration} value={editor.draft.durationMinutes} onChangeText={value=>updateDraft('durationMinutes',value)} keyboardType="number-pad" maxLength={4} />
       <Field label={n.costAmount} value={editor.draft.costAmount} onChangeText={value=>updateDraft('costAmount',value)} keyboardType="decimal-pad" maxLength={12} />
       <Field label={n.currencyCode} value={editor.draft.currency} onChangeText={value=>updateDraft('currency',value)} maxLength={3} />
@@ -558,7 +572,7 @@ function Client() {
       <Text accessibilityRole="header" style={styles.title}>{t.add}</Text>
       <Text style={styles.subtitle}>{displayedTitle(editor.context.unit)}</Text>
       <Text>{n.selectTripFirst}</Text>
-      {state.trips.map(trip => <Button key={trip.id} title={`${trip.name} · ${trip.startDate}`} selected={editor.draft.tripId === trip.id} onPress={() => chooseAddTrip(trip.id)} />)}
+      {state.trips.map(trip => <Button key={trip.id} role="radio" title={`${trip.name} · ${trip.startDate}`} selected={editor.draft.tripId === trip.id} onPress={() => chooseAddTrip(trip.id)} />)}
       <Field label={`${t.day} (YYYY-MM-DD)`} value={editor.draft.date} onChangeText={value => updateDraft('date', value)} maxLength={10} />
       <Field label={`${t.start} (HH:mm)`} value={editor.draft.startTime} onChangeText={value => updateDraft('startTime', value)} maxLength={5} />
       <Text style={styles.muted}>{n.scheduleSource}: {editor.context.unit.versionId}</Text>
@@ -585,8 +599,10 @@ function Client() {
       <Text>{t.checklist}</Text>
       {snapshot.points.map((point,index) => {
         const checked = editor.draft.checkedIds.includes(point.id);
-        return <Button key={point.id} selected={checked}
-          title={`${checked ? '✓' : '○'} ${displayedPoint(snapshot,point,index)} · ${checked ? n.checkOn : n.checkOff}`}
+        const pointTitle=displayedPoint(snapshot,point,index);
+        return <Button key={point.id} role="checkbox" selected={checked}
+          accessibilityLabel={pointTitle} accessibilityHint={n.checklistHint}
+          title={`${checked ? '✓' : '○'} ${pointTitle} · ${checked ? n.checkOn : n.checkOff}`}
           onPress={() => togglePoint(point.id)} />;
       })}
       <Field label={t.note} value={editor.draft.note} onChangeText={value => updateDraft('note', value)} multiline maxLength={2000} />
@@ -740,7 +756,7 @@ function Client() {
       <View style={styles.card}>
         <Text accessibilityRole="header" style={styles.title}>{t.language}</Text>
         {[['auto', t.automatic], ['ko', '한국어'], ['en', 'English']].map(([value, title]) =>
-          <Button key={value} title={title} selected={state.preference === value} disabled={busy || !!error} onPress={() => setLanguage(value)} />)}
+          <Button key={value} role="radio" title={title} selected={state.preference === value} disabled={busy || !!error} onPress={() => setLanguage(value)} />)}
         <Text>{t.contentLanguage}</Text><Text style={styles.subtitle}>{t.storageTitle}</Text><Text>{n.nativeStorage}</Text>
       </View>
       <View style={styles.card}>
@@ -783,8 +799,9 @@ function Client() {
           {notice ? <Text accessibilityLiveRegion="polite" style={styles.success}>{n[notice] ?? t.saved}</Text> : null}
           {content}
         </ScrollView>
-        <View style={styles.navigation}>{['trips','discover','mine','settings'].map(tab =>
-          <Button key={tab} title={t[tab]} selected={page === tab && !unit && !editor} onPress={() => navigate(tab)} />)}</View>
+        <View style={styles.navigation} accessibilityRole="tablist">{['trips','discover','mine','settings'].map(tab =>
+          <Button key={tab} role="tab" style={styles.navigationButton} title={t[tab]}
+            selected={page === tab && !unit && !editor} accessibilityHint={n.navigationHint} onPress={() => navigate(tab)} />)}</View>
       </> : null}
     </KeyboardAvoidingView>
   </SafeAreaView>;
@@ -801,7 +818,8 @@ const styles = StyleSheet.create({
   preview: {gap:10, padding:12, borderWidth:1, borderColor:'#ced7cd', borderRadius:10},
   row: {flexDirection:'row',flexWrap:'wrap',gap:8}, pointEditor: {gap:8,padding:10,borderWidth:1,borderColor:'#e0e5df',borderRadius:10},
   button: {minHeight:48, justifyContent:'center', alignItems:'center', padding:12, borderWidth:1, borderColor:'#386657', borderRadius:10, flexShrink:1},
-  buttonText: {color:'#164e43', fontSize:15, textAlign:'center'}, selected: {backgroundColor:'#164e43'}, selectedText: {color:'#fff'}, dim: {opacity:0.5},
+  buttonText: {color:'#164e43', fontSize:15, textAlign:'center', flexShrink:1}, selected: {backgroundColor:'#164e43'}, selectedText: {color:'#fff'}, dim: {opacity:0.5},
   danger: {borderColor:'#9a332b'}, dangerText: {color:'#9a332b'}, error: {color:'#a12820', fontWeight:'600'}, success: {color:'#176249', fontWeight:'600'},
   navigation: {padding:12, flexDirection:'row', flexWrap:'wrap', justifyContent:'space-around', gap:8, borderTopWidth:1, borderTopColor:'#ced7cd'},
+  navigationButton: {flexGrow:1, flexBasis:'40%'},
 });

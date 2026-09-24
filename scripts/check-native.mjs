@@ -6,7 +6,7 @@ import { nativeCopy } from '../native/copy.js';
 const config = JSON.parse(await readFile('app.json', 'utf8')).expo;
 const pkg = JSON.parse(await readFile('package.json', 'utf8'));
 assert.equal(config.version, pkg.version);
-assert.equal(config.android.versionCode, 9);
+assert.equal(config.android.versionCode, 10);
 assert.deepEqual(config.platforms, ['android']);
 assert.equal(config.android.allowBackup, false);
 assert.equal(config.updates.enabled, false);
@@ -23,5 +23,9 @@ for (const file of await readdir('native')) {
 }
 const appSource = await readFile('native/App.js', 'utf8');
 assert(appSource.includes(`const appVersion = '${pkg.version}'`));
+assert(!appSource.includes('allowFontScaling={false}'));
+for (const marker of ['role="checkbox"', 'role="radio"', 'role="tab"', 'accessibilityRole="tablist"', 'minHeight:48', "flexBasis:'40%'", 'resolveBackAction']) {
+  assert(appSource.includes(marker), `Missing native accessibility guard: ${marker}`);
+}
 assert(pkg.dependencies['expo-file-system']);
-console.log('PASS: native JSX parses; ko/en keys and v0.9.0 config agree; Android-only permissions/backup/update, explicit file-picker backup and source-boundary guards pass. Future API modules remain disconnected. Not an APK or device test.');
+console.log('PASS: native JSX parses; ko/en keys and v0.10.0 config agree; accessibility semantics/font scaling/touch-size/small-screen/back guards and Android privacy/source boundaries pass. Future API modules remain disconnected. Not an APK, TalkBack, visual or device test.');

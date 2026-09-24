@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.10.0 — 2026-09-25
+
+- M09: added semantic checkbox, radio and tab roles with checked/selected/disabled state, explicit Korean/English accessibility hints, scalable native text/input and a wrapping two-row bottom navigation for narrow screens and enlarged text.
+- Extracted Android hardware-back resolution into a pure, tested state function. A discard prompt is dismissed first; a changed editor requests confirmation rather than closing; clean editors, unit details, selected trips and non-default tabs then unwind in order.
+- Static guards now require 48dp control height, scalable text, flexible navigation and the semantic control markers. Regression tests cover the back-state precedence and Korean/English accessibility-copy parity. Existing repository write-failure tests continue to prove bytes are preserved and reload is required after ambiguous writes.
+- Validation: `npm test` **117/117 passed**; `npm run check` passed (**23 JavaScript files**); Android Metro/Hermes bundle passed (**614 modules**); offline Android source prebuild passed with v0.10.0/code 10 and source manifest inspection retained backup/OTA and location/media/advertising restrictions. `npm run test:ui` was attempted and blocked before launch by missing Chromium. APK assembly was attempted offline but the Gradle 9.0.0 distribution is unavailable and cannot be downloaded; Android SDK, adb, system Gradle and `javac` are absent. No APK, TalkBack, font-scale visual, keyboard, merged-manifest or device pass is claimed.
+
 ## 0.9.0 — 2026-09-25
 
 - M07: expanded the disconnected future API client into an injected mock-test boundary. It remains disabled by default, has no configured origin and is not imported by either the native app or retained web reference.

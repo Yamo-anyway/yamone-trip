@@ -2,11 +2,17 @@
 
 This is a handoff proposal, not a deployed API or a backend implementation. All UI data currently comes from local fixtures/storage. `src/api.js` is disabled by default and is not imported by the UI. `src/contracts.d.ts` defines matching data shapes without requiring a TypeScript build.
 
-## Native boundary — v0.9.0
+## Native boundary — v0.10.0
 
 The primary client is now the Android native app in `native/`; the web UI is a retained reference only. Native screens do not import `src/api.js` or any remote transport. `NativeRepository` uses an injected asynchronous key/value interface (`getItem`, `setItem`) with one application-scoped writer, validated reads and serialized transactions. Preferences must preserve all trips, snapshots and records. Failed/ambiguous writes require reload; parse/schema errors must never become empty-state writes. This is local sequencing, NOT an atomic multi-process or server revision protocol.
 
 The app uses `yamone-trip:native:state:v1`, distinct from browser storage. No automatic browser-data migration is performed. Backup import validates all content and presents an explicit preview/confirmation. AsyncStorage is unencrypted and must not contain credentials. The Android app configuration disables OS backup, but the merged release manifest and actual device behavior still require verification before any privacy/release claim. Browser CSP guards only the legacy browser reference; it is not the native network boundary. Do not add an endpoint, login, live translator, background synchronization or OTA update service during this migration.
+
+### M09 accessibility and data-loss boundary
+
+Native checklist actions expose checkbox roles and checked state; exclusive choices expose radio roles and checked state; bottom navigation exposes tab roles and selected state. Text and inputs explicitly permit platform font scaling, controls retain a 48dp minimum target and bottom navigation wraps to two rows for narrow screens. Korean and English accessibility hint keys must stay in parity. These are source/static guarantees only: they do not prove TalkBack reading order, focus movement, contrast, font-scale layout, soft-keyboard interaction or safe-area behavior on a device.
+
+Android hardware-back resolution is deterministic and tested separately from rendering. An open discard confirmation is dismissed first. A changed editor opens confirmation rather than closing, while a clean editor can close; unit details, selected-trip detail and non-default tabs then unwind before the system may exit. Repository write failure preserves previous bytes, invalidates the in-memory writer and requires reload; the UI keeps editor state rather than reporting success. This is client data-loss protection, not durable server storage, encryption or a guarantee against app removal/device failure.
 
 ### M07 disconnected API and repository boundary
 
