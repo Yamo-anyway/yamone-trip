@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.4.0 — 2026-09-24
+
+- A02: connected the native app flow from private trip creation through exact unit-version scheduling, personal schedule editing, overlap warnings, self-reported point checks and private notes.
+- Schedule edits preserve item/unit/version identities, original snapshots and records. Movement/break fields are manual estimates only; no location, route, arrival or visit verification was added.
+- Added explicit validation/save errors and confirmation before discarding changed native forms. Failed storage writes keep form input and require repository reload.
+- Added native-safe opaque local ID generation without browser crypto globals. These are not future server identities.
+- Added pure native mutation/draft actions and 9 regression tests covering private state, immutable snapshots, duplicate/out-of-range rejection, edit preservation, records/skips, missing targets and discard-state detection.
+- Validation: `npm test` 60/60 passed; `npm run check` passed; Android Metro/Hermes bundle passed (598 modules); offline Android source prebuild and v0.4.0/code 4 source-config inspection passed. `npm run test:ui` was attempted and blocked before launch by the still-missing Chromium executable; it covers only the retained web reference. No Android SDK/JDK compiler/adb is available, so APK build, merged manifest, installation and native UI/device testing remain unverified.
+
 ## 0.3.0 — 2026-09-24
 
 - A01: honor the user's app correction; add Android React Native/Expo screens, not a WebView/PWA. Preserve the web implementation as a regression reference. Native trip/edit/checklist wiring is A02, not claimed complete here.

@@ -6,6 +6,7 @@ import { nativeCopy } from '../native/copy.js';
 const config = JSON.parse(await readFile('app.json', 'utf8')).expo;
 const pkg = JSON.parse(await readFile('package.json', 'utf8'));
 assert.equal(config.version, pkg.version);
+assert.equal(config.android.versionCode, 4);
 assert.deepEqual(config.platforms, ['android']);
 assert.equal(config.android.allowBackup, false);
 assert.equal(config.updates.enabled, false);
@@ -18,6 +19,6 @@ for (const file of await readdir('native')) {
   if (!file.endsWith('.js')) continue;
   const source = await readFile(`native/${file}`, 'utf8');
   parse(source, {sourceType:'module', plugins:['jsx']});
-  assert(!/\bfetch\s*\(|XMLHttpRequest|WebSocket|WebView|expo-location|expo-image-picker|navigator\.|localStorage|\.\/api\.js|expo-updates/.test(source), `Unexpected native boundary: ${file}`);
+  assert(!/\bfetch\s*\(|XMLHttpRequest|WebSocket|WebView|expo-location|expo-image-picker|navigator\.|localStorage|crypto\s*\.\s*randomUUID|\.\/api\.js|expo-updates/.test(source), `Unexpected native boundary: ${file}`);
 }
-console.log('PASS: native JSX parses; ko/en keys and version agree; Android-only permissions/backup/update and source-boundary guards pass. Not an APK or device test.');
+console.log('PASS: native JSX parses; ko/en keys and v0.4.0 config agree; Android-only permissions/backup/update and source-boundary guards pass. Not an APK or device test.');

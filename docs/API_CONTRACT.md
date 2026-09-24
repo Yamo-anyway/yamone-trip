@@ -2,11 +2,17 @@
 
 This is a handoff proposal, not a deployed API or a backend implementation. All UI data currently comes from local fixtures/storage. `src/api.js` is disabled by default and is not imported by the UI. `src/contracts.d.ts` defines matching data shapes without requiring a TypeScript build.
 
-## Native boundary — v0.3.0
+## Native boundary — v0.4.0
 
 The primary client is now the Android native app in `native/`; the web UI is a retained reference only. Native screens do not import `src/api.js` or any remote transport. `NativeRepository` uses an injected asynchronous key/value interface (`getItem`, `setItem`) with one application-scoped writer, validated reads and serialized transactions. Preferences must preserve all trips, snapshots and records. Failed/ambiguous writes require reload; parse/schema errors must never become empty-state writes. This is local sequencing, NOT an atomic multi-process or server revision protocol.
 
 The app uses `yamone-trip:native:state:v1`, distinct from browser storage. No automatic browser-data migration is performed. Future backup import must validate all content and present an explicit preview/confirmation. AsyncStorage is unencrypted and must not contain credentials. The Android app configuration disables OS backup, but the merged release manifest and actual device behavior still require verification before any privacy/release claim. Browser CSP guards only the legacy browser reference; it is not the native network boundary. Do not add an endpoint, login, live translator, background synchronization or OTA update service during this migration.
+
+### A02 local mutation boundary
+
+The native UI now uses pure local actions matching the future endpoint intent: create a private trip, add an exact unit-version snapshot, edit only personal schedule fields, and store a self-reported experience record. Local opaque IDs are generated without browser crypto globals and are not server identities. The server must later issue/validate authoritative IDs and ownership. Local actions validate the entire resulting state before AsyncStorage writes. Schedule edits preserve item/unit/version identity and snapshots; record writes preserve private notes and never assert arrival or attendance. UI forms retain entered values on validation/storage failure and require confirmation before discarding changed input.
+
+This does not activate any endpoint below. There is still no authentication, synchronization, publication, idempotency guarantee across processes, remote revision or server-side authorization. The local repository serializes one running app instance only.
 
 ## Common conventions
 

@@ -10,7 +10,7 @@ The user corrected the initial implementation: this must be an app, not a websit
 
 Native storage uses an app-scoped AsyncStorage namespace, separate from the existing browser data. It is unencrypted local storage, not registration, authentication, publication or proof of attendance. App removal/data clearing can lose records. Android automatic backup is disabled; intentional backup/restore and browser-to-app transfer need validated preview/confirmation later. Never silently copy or erase browser data. Do not store secrets or irreplaceable personal records in the development app.
 
-A01 implements native demo discovery/details and language settings with safe asynchronous storage. Native trips/schedule/checklist screens are the next milestone, not claimed complete. `com.yamone.trip.dev` is only a development package identifier, not a final release decision. Source/bundle checks do not prove APK installation, actual permissions or visual behavior; these remain explicit release gates.
+A01 implements native demo discovery/details and language settings with safe asynchronous storage. A02 adds private native trip creation, unit-version scheduling, schedule editing and self-reported checklists/private notes. Unsaved form changes require an explicit discard action before leaving. `com.yamone.trip.dev` is only a development package identifier, not a final release decision. Source/bundle checks do not prove APK installation, actual permissions or visual behavior; these remain explicit release gates.
 
 ## Core rules
 
