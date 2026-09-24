@@ -10,7 +10,7 @@ The user corrected the initial implementation: this must be an app, not a websit
 
 Native storage uses an app-scoped AsyncStorage namespace, separate from the existing browser data. It is unencrypted local storage, not registration, authentication, publication or proof of attendance. App removal/data clearing can lose records. Android automatic backup is disabled; intentional backup/restore and browser-to-app transfer need validated preview/confirmation later. Never silently copy or erase browser data. Do not store secrets or irreplaceable personal records in the development app.
 
-A01 implements native demo discovery/details and language settings with safe asynchronous storage. A02 adds private native trip creation, unit-version scheduling, schedule editing and self-reported checklists/private notes. Unsaved form changes require an explicit discard action before leaving. `com.yamone.trip.dev` is only a development package identifier, not a final release decision. Source/bundle checks do not prove APK installation, actual permissions or visual behavior; these remain explicit release gates.
+A01 implements native demo discovery/details and language settings with safe asynchronous storage. A02 adds private native trip creation, unit-version scheduling, schedule editing and self-reported checklists/private notes. M03 adds user-initiated local JSON backup/restore through Android system pickers. Import is fully validated and previewed before an explicit replacement confirmation; it is not sync, an account, automatic browser migration or encrypted storage. Unsaved form changes require an explicit discard action before leaving. `com.yamone.trip.dev` is only a development package identifier, not a final release decision. Source/bundle checks do not prove APK installation, actual permissions or visual behavior; these remain explicit release gates.
 
 ## Core rules
 
@@ -22,6 +22,7 @@ A01 implements native demo discovery/details and language settings with safe asy
 - Version history and attribution must support future privacy/rights removal: immutable business history is NOT permission to retain prohibited personal data forever.
 - External maps, when added, receive only the public destination and open upon explicit user action; no current origin is supplied by this app. Third-party apps have separate policies.
 - Translation requests must not include account IDs, private itineraries or personal notes by default. Backend services are not called in this phase.
+- Backup files deliberately contain private itineraries and notes so they can round trip. They stay outside translation/API flows, are never uploaded by the app, and must be labeled unencrypted and sensitive.
 
 ## Not yet confirmed
 

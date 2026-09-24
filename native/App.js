@@ -10,6 +10,8 @@ import { catalog } from '../src/catalog.js';
 import { filterUnits, findConflicts, scheduleEnd, sortedItems, timeOf } from '../src/domain.js';
 import { costLabel, dictionaries, resolveLocale, textFor } from '../src/i18n.js';
 import { addUnitToTrip, createPrivateTrip, editTripItem, saveExperienceRecord } from './actions.js';
+import { createBackup, parseBackup } from './backup.js';
+import { exportBackupFile, isPickerCancellation, pickBackupFile } from './backup-files.js';
 import { beginDraft, changeDraft, hasUnsavedChanges } from './drafts.js';
 import { createIdGenerator } from './ids.js';
 import { NativeRepository } from './storage.js';
@@ -18,6 +20,7 @@ import { nativeCopy } from './copy.js';
 // No remote adapter, browser, map, upload or location module is imported here.
 const repository = new NativeRepository(AsyncStorage);
 const demoRegion = {country:'KR', city:'seoul', district:'seongsu'};
+const appVersion = '0.5.0';
 
 function Text({style, ...props}) {
   return <NativeText {...props} style={[{color:'#182d25'}, style]} />;
@@ -62,6 +65,8 @@ function Client() {
   const [discardPrompt, setDiscardPrompt] = useState(false);
   const [formError, setFormError] = useState('');
   const [notice, setNotice] = useState('');
+  const [backupCandidate, setBackupCandidate] = useState(null);
+  const [backupError, setBackupError] = useState('');
   const locale = resolveLocale(state?.preference ?? 'auto', deviceLocale);
   const t = dictionaries[locale];
   const n = nativeCopy[locale];
@@ -75,6 +80,7 @@ function Client() {
     try {
       const next = await repository.load();
       setState(next);
+      setBackupCandidate(null); setBackupError('');
       if (selectedTripId && !next.trips.some(trip => trip.id === selectedTripId)) setSelectedTripId(null);
     } catch { setError('loadError'); }
     finally { lock.current = false; setBusy(false); }
@@ -109,6 +115,7 @@ function Client() {
   function navigate(tab) {
     requestLeave(() => {
       setUnit(null); setPage(tab); setNotice('');
+      if (tab !== 'settings') { setBackupCandidate(null); setBackupError(''); }
       if (tab !== 'trips') setSelectedTripId(null);
     });
   }
@@ -130,6 +137,45 @@ function Client() {
 
   async function setLanguage(preference) {
     await commit(current => ({...current, preference}), 'savedLanguage');
+  }
+
+  async function exportLocalBackup() {
+    if (lock.current || error) return;
+    lock.current = true; setBusy(true); setBackupError(''); setNotice('');
+    const createdAt = new Date().toISOString();
+    try {
+      const contents = createBackup(state, {createdAt, appVersion});
+      await exportBackupFile(contents, createdAt);
+      setNotice('backupExported');
+    } catch (caught) {
+      if (!isPickerCancellation(caught)) {
+        const code = caught instanceof Error ? caught.message : 'backupError';
+        setBackupError(code in n ? code : 'backupError');
+      }
+    } finally { lock.current = false; setBusy(false); }
+  }
+
+  async function chooseBackup() {
+    if (lock.current || error) return;
+    lock.current = true; setBusy(true); setBackupError(''); setNotice(''); setBackupCandidate(null);
+    try {
+      const file = await pickBackupFile();
+      const candidate = parseBackup(file.text);
+      setBackupCandidate({...candidate, fileName:file.name});
+    } catch (caught) {
+      if (!isPickerCancellation(caught)) {
+        const code = caught instanceof Error ? caught.message : 'backupError';
+        setBackupError(code in n ? code : 'backupError');
+      }
+    } finally { lock.current = false; setBusy(false); }
+  }
+
+  async function confirmBackupImport() {
+    if (!backupCandidate) return;
+    await commit(() => backupCandidate.state, 'backupImported', () => {
+      setBackupCandidate(null); setBackupError(''); setRegion(null); setUnit(null);
+      setSelectedTripId(null); setEditor(null); setPage('settings');
+    });
   }
 
   function startTrip() {
@@ -361,14 +407,36 @@ function Client() {
   }
 
   function renderSettings() {
-    return <View style={styles.card}>
-      <Text accessibilityRole="header" style={styles.title}>{t.language}</Text>
-      {[['auto', t.automatic], ['ko', '한국어'], ['en', 'English']].map(([value, title]) =>
-        <Button key={value} title={title} selected={state.preference === value} disabled={busy || !!error} onPress={() => setLanguage(value)} />)}
-      <Text>{t.contentLanguage}</Text><Text style={styles.subtitle}>{t.storageTitle}</Text><Text>{n.nativeStorage}</Text>
-      <Text style={styles.subtitle}>{t.privacyTitle}</Text><Text>{t.privacyBody}</Text>
-      <Text style={styles.subtitle}>{t.serverTitle}</Text><Text>{t.serverBody}</Text>
-    </View>;
+    const preview = backupCandidate?.preview;
+    return <>
+      <View style={styles.card}>
+        <Text accessibilityRole="header" style={styles.title}>{t.language}</Text>
+        {[['auto', t.automatic], ['ko', '한국어'], ['en', 'English']].map(([value, title]) =>
+          <Button key={value} title={title} selected={state.preference === value} disabled={busy || !!error} onPress={() => setLanguage(value)} />)}
+        <Text>{t.contentLanguage}</Text><Text style={styles.subtitle}>{t.storageTitle}</Text><Text>{n.nativeStorage}</Text>
+      </View>
+      <View style={styles.card}>
+        <Text accessibilityRole="header" style={styles.title}>{n.backupTitle}</Text>
+        <Text>{n.backupPrivacy}</Text><Text style={styles.badge}>{n.backupNoUpload}</Text>
+        <Button title={n.exportBackup} onPress={exportLocalBackup} disabled={busy || !!error} />
+        <Button title={n.importBackup} onPress={chooseBackup} disabled={busy || !!error} />
+        {backupError ? <Text accessibilityRole="alert" style={styles.error}>{n[backupError] ?? n.backupError}</Text> : null}
+        {preview ? <View style={styles.preview} accessibilityLiveRegion="polite">
+          <Text style={styles.subtitle}>{n.backupPreview}</Text>
+          <Text>{n.backupFile}: {backupCandidate.fileName}</Text>
+          <Text>{n.backupSource}: {preview.source === 'legacy_raw_v1' ? n.backupLegacy : n.backupCurrent}</Text>
+          <Text>{n.backupCreated}: {preview.createdAt ?? n.backupUnknownDate}</Text>
+          <Text>{n.backupCounts}: {preview.tripCount} / {preview.itemCount} / {preview.recordCount}</Text>
+          <Text style={styles.error}>{n.backupReplaceWarning}</Text>
+          <Button title={n.confirmImport} danger onPress={confirmBackupImport} disabled={busy || !!error} />
+          <Button title={t.cancel} onPress={() => {setBackupCandidate(null); setBackupError('');}} disabled={busy} />
+        </View> : null}
+      </View>
+      <View style={styles.card}>
+        <Text style={styles.subtitle}>{t.privacyTitle}</Text><Text>{t.privacyBody}</Text>
+        <Text style={styles.subtitle}>{t.serverTitle}</Text><Text>{t.serverBody}</Text>
+      </View>
+    </>;
   }
 
   const content = editor ? renderEditor() : unit ? renderUnit() : page === 'discover' ? renderDiscover() :
@@ -402,6 +470,7 @@ const styles = StyleSheet.create({
   muted: {color:'#535b56'}, badge: {color:'#79521a', fontWeight:'600'}, notice: {color:'#535b56', lineHeight:21},
   field: {gap:6}, label: {fontWeight:'600'}, input: {borderWidth:1, borderColor:'#6e8076', borderRadius:10, padding:12, minHeight:48, backgroundColor:'#fff', color:'#182d25'},
   noteInput: {minHeight:112, textAlignVertical:'top'},
+  preview: {gap:10, padding:12, borderWidth:1, borderColor:'#ced7cd', borderRadius:10},
   button: {minHeight:48, justifyContent:'center', alignItems:'center', padding:12, borderWidth:1, borderColor:'#386657', borderRadius:10, flexShrink:1},
   buttonText: {color:'#164e43', fontSize:15, textAlign:'center'}, selected: {backgroundColor:'#164e43'}, selectedText: {color:'#fff'}, dim: {opacity:0.5},
   danger: {borderColor:'#9a332b'}, dangerText: {color:'#9a332b'}, error: {color:'#a12820', fontWeight:'600'}, success: {color:'#176249', fontWeight:'600'},

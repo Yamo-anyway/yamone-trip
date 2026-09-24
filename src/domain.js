@@ -24,7 +24,7 @@ export function timeOf(minutes) { return `${String(Math.floor(minutes/60)).padSt
 export function validateUnit(unit) {
   if (!unit || typeof unit.id !== 'string' || !unit.id || typeof unit.versionId !== 'string' || !unit.versionId || !unit.title || typeof unit.title !== 'object' || !Object.values(unit.title).every(v=>typeof v==='string') || !Object.values(unit.title).some(v=>v.trim())) throw new Error('invalid');
   if (!Number.isInteger(unit.durationMinutes) || unit.durationMinutes<1 || unit.durationMinutes>1440) throw new Error('invalid');
-  if (!['walk','cafe','sightseeing'].includes(unit.category) || !['seed','sprout'].includes(unit.growth) || !['first_hand','ai_draft'].includes(unit.sourceType)) throw new Error('invalid');
+  if (!['walk','cafe','sightseeing'].includes(unit.category) || unit.transport!=='walk' || !['seed','sprout'].includes(unit.growth) || !['first_hand','ai_draft'].includes(unit.sourceType)) throw new Error('invalid');
   if (typeof unit.sourceLocale!=='string' || typeof unit.author!=='string' || !Number.isInteger(unit.version) || unit.version<1) throw new Error('invalid');
   if (!unit.region || ['country','city','district'].some(k=>typeof unit.region[k]!=='string' || !unit.region[k])) throw new Error('invalid');
   if (!unit.cost || !Number.isFinite(unit.cost.amount) || unit.cost.amount<0 || !/^[A-Z]{3}$/.test(unit.cost.currency)) throw new Error('invalid');

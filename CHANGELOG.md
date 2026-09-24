@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.5.0 — 2026-09-25
+
+- M03: added explicit Android local backup export and import through system file/directory pickers. The app does not upload or automatically share backup files.
+- Backup v1 is a versioned JSON envelope. Import checks the file-size limit and validates the complete state, trip ranges, item identities, immutable unit-version snapshots, records and self-reported statuses before showing a count-only preview.
+- Restore requires a second destructive confirmation and uses the repository's stale/write-failure protection. Cancelled, malformed, unsupported and future-version files leave both current app data and the selected file unchanged.
+- Exact snapshots, Korean/English/original text, manual movement/break estimates, private notes and completion records round trip. An explicit raw schema-v1 path supports earlier local/browser data; no automatic browser migration was added. Unknown fields are discarded before persistence.
+- Added strict transport validation and eight backup/migration regression tests. Pinned the Expo SDK 55 filesystem module already bundled by Expo; no broad storage, photo or location permission was added.
+- Validation: `npm test` **68/68 passed**; `npm run check` passed; Android Metro/Hermes bundle passed (610 modules); offline Android source prebuild passed and generated v0.5.0/code 5 config retained backup disabled and location/media permission removals. `npm run test:ui` was attempted and blocked before launch by missing Chromium; it only covers the retained web reference. No JDK compiler/Android SDK/adb is available, so APK, merged manifest, native file-picker interaction and device UI remain unverified.
+
 ## 0.4.0 — 2026-09-24
 
 - A02: connected the native app flow from private trip creation through exact unit-version scheduling, personal schedule editing, overlap warnings, self-reported point checks and private notes.

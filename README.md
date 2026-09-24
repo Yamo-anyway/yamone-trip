@@ -1,6 +1,6 @@
 # Yamone Trip / 야모네 트립
 
-**v0.4.0 · Android 네이티브 앱 전환 2단계. APK는 아직 생성·검증하지 못했습니다.**
+**v0.5.0 · Android 네이티브 앱 전환 3단계. APK는 아직 생성·검증하지 못했습니다.**
 
 사용자의 “웹이 아닌 앱” 요청에 따라 React Native/Expo로 전환 중입니다. 웹뷰로 기존 사이트를 감싼 앱이 아닙니다. `native/`가 앱 화면이고 `src/`의 데이터·규칙을 재사용합니다. 이전 웹 화면은 회귀검사용으로만 보존합니다. 서버·실제 API·위치 기능·유료 빌드 서비스·스토어 제출은 포함하지 않습니다.
 
@@ -13,6 +13,8 @@
 - 경험 포인트 직접 체크, 부분/완료/건너뜀 상태와 개인 메모 저장. 위치나 방문 인증으로 표현하지 않습니다.
 - 저장하지 않은 여행·일정·기록 입력을 두고 화면을 나갈 때 변경 폐기 확인.
 - 앱과 브라우저 저장소를 분리합니다. 기존 데이터 자동 이전/삭제는 없습니다.
+- 시스템 파일 선택기를 직접 눌러 로컬 백업을 내보내거나 가져옵니다. 앱은 파일을 업로드·자동 공유하지 않습니다.
+- 가져올 파일 전체를 검증하고 여행/일정/경험 기록 건수만 미리 본 뒤, 별도 확인으로 현재 로컬 데이터를 교체합니다. 스냅샷과 개인 메모도 보존됩니다.
 
 ## 개발 및 검사
 
@@ -37,7 +39,7 @@ npm run android
 
 `npm start`는 오프라인 모드 Metro 개발 서버를 실행합니다. 앱 내부 API는 연결하지 않습니다. Expo 텔레메트리 및 앱 OTA 업데이트는 비활성 설정입니다. `app.json`의 Android 패키지 `com.yamone.trip.dev`는 개발용 임시 식별자이며 출시 식별자 확정이 아닙니다. 생성된 `android/`, 바이너리, 키/서명 파일은 커밋하지 않습니다.
 
-참고한 공식 문서: [Expo SDK 호환성](https://docs.expo.dev/versions/v55.0.0/), [네이티브 로컬 빌드](https://docs.expo.dev/guides/local-app-development/), [AsyncStorage](https://docs.expo.dev/versions/latest/sdk/async-storage/), [앱 설정](https://docs.expo.dev/versions/latest/config/app/), [언어 설정](https://docs.expo.dev/versions/v55.0.0/sdk/localization/).
+참고한 공식 문서: [Expo SDK 호환성](https://docs.expo.dev/versions/v55.0.0/), [네이티브 로컬 빌드](https://docs.expo.dev/guides/local-app-development/), [AsyncStorage](https://docs.expo.dev/versions/latest/sdk/async-storage/), [파일시스템과 시스템 선택기](https://docs.expo.dev/versions/v55.0.0/sdk/filesystem/), [앱 설정](https://docs.expo.dev/versions/latest/config/app/), [언어 설정](https://docs.expo.dev/versions/v55.0.0/sdk/localization/).
 
 ## 보존된 웹 회귀 검사
 
@@ -50,6 +52,6 @@ npm run test:ui
 
 ## 제한과 다음 단계
 
-데모의 작성자·장소·가격·성장 표시는 실제 검증된 여행 정보가 아닙니다. 사진 업로드, 지도, GPS/위치 권한, 추적, 광고/분석 SDK, 자동 번역, 서버 인증은 없습니다. 앱 데이터 삭제나 제거 시 기록을 잃을 수 있습니다. OS 백업 비활성 설정은 실제 병합 manifest/기기로 다시 검증해야 합니다. 현재 데모에 대체 불가능한 개인 기록을 저장하지 마세요.
+데모의 작성자·장소·가격·성장 표시는 실제 검증된 여행 정보가 아닙니다. 사진 업로드, 지도, GPS/위치 권한, 추적, 광고/분석 SDK, 자동 번역, 서버 인증은 없습니다. 앱 데이터 삭제나 제거 시 기록을 잃을 수 있습니다. 백업은 암호화되지 않으며 정확한 일정과 개인 메모를 포함하므로 안전한 폴더에 보관해야 합니다. OS 백업 비활성 설정은 실제 병합 manifest/기기로 다시 검증해야 합니다. 현재 데모에 대체 불가능한 개인 기록을 저장하지 마세요.
 
-다음 작업은 **A03: 로컬 Android APK 빌드 및 실제 기기 스모크 검사**입니다. 빌드 도구가 계속 없으면 그 제한을 유지한 채 다음 독립적인 클라이언트 마일스톤으로 진행합니다. [AGENTS.md](AGENTS.md), [제품 범위](docs/PRODUCT.md), [진행 기록](docs/PROGRESS.md), [API 계약](docs/API_CONTRACT.md)을 최신 main에서 읽고 계속합니다.
+다음 실행도 먼저 **A03: 로컬 Android APK 빌드 및 실제 기기 스모크 검사** 가능 여부를 확인합니다. 빌드 도구가 계속 없으면 제한을 유지하고 **M04: 앱 내 로컬 유닛 작성과 불변 버전**을 진행합니다. [AGENTS.md](AGENTS.md), [제품 범위](docs/PRODUCT.md), [진행 기록](docs/PROGRESS.md), [API 계약](docs/API_CONTRACT.md)을 최신 main에서 읽고 계속합니다.

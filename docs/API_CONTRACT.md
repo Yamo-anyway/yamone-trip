@@ -2,11 +2,19 @@
 
 This is a handoff proposal, not a deployed API or a backend implementation. All UI data currently comes from local fixtures/storage. `src/api.js` is disabled by default and is not imported by the UI. `src/contracts.d.ts` defines matching data shapes without requiring a TypeScript build.
 
-## Native boundary — v0.4.0
+## Native boundary — v0.5.0
 
 The primary client is now the Android native app in `native/`; the web UI is a retained reference only. Native screens do not import `src/api.js` or any remote transport. `NativeRepository` uses an injected asynchronous key/value interface (`getItem`, `setItem`) with one application-scoped writer, validated reads and serialized transactions. Preferences must preserve all trips, snapshots and records. Failed/ambiguous writes require reload; parse/schema errors must never become empty-state writes. This is local sequencing, NOT an atomic multi-process or server revision protocol.
 
-The app uses `yamone-trip:native:state:v1`, distinct from browser storage. No automatic browser-data migration is performed. Future backup import must validate all content and present an explicit preview/confirmation. AsyncStorage is unencrypted and must not contain credentials. The Android app configuration disables OS backup, but the merged release manifest and actual device behavior still require verification before any privacy/release claim. Browser CSP guards only the legacy browser reference; it is not the native network boundary. Do not add an endpoint, login, live translator, background synchronization or OTA update service during this migration.
+The app uses `yamone-trip:native:state:v1`, distinct from browser storage. No automatic browser-data migration is performed. Backup import validates all content and presents an explicit preview/confirmation. AsyncStorage is unencrypted and must not contain credentials. The Android app configuration disables OS backup, but the merged release manifest and actual device behavior still require verification before any privacy/release claim. Browser CSP guards only the legacy browser reference; it is not the native network boundary. Do not add an endpoint, login, live translator, background synchronization or OTA update service during this migration.
+
+### M03 backup/import boundary
+
+Backup is a local user-controlled transfer, not an API endpoint or synchronization protocol. Export writes a versioned `yamone-trip-local-backup` JSON file only after the user chooses a directory in the Android system picker. It includes the complete local schema-v1 state, including private trip dates, unit-version snapshots, experience records and personal notes, and is explicitly labeled unencrypted. The app does not upload it, silently scan storage, automatically migrate browser data or receive files in the background.
+
+Import opens the system file picker after an explicit tap, rejects files over 10 MB, parses and canonicalizes known schema-v1 fields, then validates every trip/item/snapshot/record relationship before producing an in-memory, count-only preview. Unknown fields are not persisted. Current app data is replaced only after a second explicit confirmation through `NativeRepository.transact`, so stale or ambiguous writes fail closed. Cancelled, malformed, unsupported or future-version files never trigger a write and the selected source file is not modified or deleted. A raw schema-v1 file is accepted only through this same explicit preview/confirmation path for earlier local/browser transfer.
+
+This backup format is device-local and not the future server DTO. Local opaque IDs remain non-authoritative and may require an explicit reconciliation design when accounts/sync exist. The server must never accept a backup file as proof of authorship, publication, ownership, attendance or growth.
 
 ### A02 local mutation boundary
 
