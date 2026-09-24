@@ -2,7 +2,7 @@
 
 작은 여행 경험을 골라 일정으로 만들고 직접 경험하는, 한국어·영어 모바일 웹 클라이언트입니다.
 
-**v0.1.0 · Local demo. Backend, deployment and app-store release are not included.**
+**v0.2.0 · Local demo. Backend, deployment and app-store release are not included.**
 
 ## Run locally
 
@@ -30,13 +30,14 @@ Browser setup references: [Playwright library](https://playwright.dev/docs/libra
 - Four **illustrative** units in manually selected Seoul/Seongsu; bilingual search, time/category/cost filters. The current catalog has one sample region only.
 - Unit details, 1–5 experience points, demo original/translation switch, AI-draft labels.
 - Private local trips, dates, daily schedule, immutable unit-version snapshots, overlap warnings, removal confirmation.
+- Edit schedule day/start/duration, reorder by start time, and manually reserve movement/break estimates after each activity. Conflicts include these estimates; total time cannot cross midnight. Existing snapshots, notes and completion records are preserved.
 - Self-reported completion checklist and private notes, persisted in browser storage.
 - Disabled future HTTP adapter, DTOs and a proposed API contract. The running UI never calls it; CSP blocks network connections.
 - Validation for corrupt storage, quota errors, stale tabs, date ranges and point IDs.
 
 ## Deliberate limitations
 
-No accounts, public publishing, real AI generation/translation, map integration, device location, payments, photos, offline installation or native app packaging. Authoring/derivation and schedule editing are upcoming milestones, not functioning buttons disguised as features. Movement time is not automatically included. Browser data may be cleared; local mode is not secure multi-user authentication. Until backup/restore is implemented, do not rely on this demo for irreplaceable records. If another tab saved, reload before editing; stale writes are refused.
+No accounts, public publishing, real AI generation/translation, map integration, device location, payments, photos, offline installation or native app packaging. Authoring/derivation are upcoming milestones, not functioning buttons disguised as features. Movement/break estimates default to zero and must be entered manually; no route optimization is performed. Review them after reordering. Browser data may be cleared; local mode is not secure multi-user authentication. Until backup/restore is implemented, do not rely on this demo for irreplaceable records. If another tab saved, reload before editing; stale writes are refused.
 
 The four units and authors are demo fixtures, **not verified real travelers or current prices/opening hours**. A sprout/first-hand label in a fixture illustrates the product design only. No completion sends data to anyone or changes public reputation.
 

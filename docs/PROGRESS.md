@@ -4,15 +4,17 @@ Read repository HEAD first; this document is the durable handoff across schedule
 
 ## Current milestone
 
-**M01 — v0.1.0: initial local client.** Korean/English shell; four clearly labeled demo units; manual sample region; search/filter; original toggle; private trip dates/daily items with snapshots; overlap warning; manual checklist and private note; safe browser storage; disabled API adapter and proposed DTO/endpoint contract.
+**M02 — v0.2.0: schedule editing implemented; browser verification pending.** Day/start/duration editing; manual movement and break estimates after each item; stable time-based presentation order; buffer-inclusive conflict warnings and same-day/calendar validation. Editing preserves original unit/version snapshots, record IDs, completion and notes. Legacy schema-v1 items without estimates are read as zero without a load-time rewrite. Server calls remain disabled.
 
-Verification on 2026-09-24: `npm test` **28/28 passed** (domain, storage, API adapter, localhost static server). `npm run check` passed (13 JavaScript files, locale-key parity, fixture validation, source privacy/offline guards, handoff files). `npm run test:ui` was **blocked before browser launch**: Chromium is absent, and the official Playwright installer returned truncated/invalid archives. The smoke script is present but its 10 browser scenarios and visual screenshots are NOT verified. No browser pass or visual QA is claimed. Retry in a working supported browser environment before treating the UI as release-ready; do not bypass network restrictions or repeatedly retry an unchanged failed download.
+This run verified all 24 starting files against latest GitHub main `4a447c2116101c253a12af0bc2a630f366fc0e29` before editing. M01 features remain: bilingual demo discovery/details, private local trips, manual checklists/notes, safe browser storage, and disabled API contract/adapter.
+
+Verification on 2026-09-24: `npm test` **40/40 passed** in this run (domain, storage, API adapter, localhost static server; 12 new schedule tests). `npm run check` passed (14 JavaScript files, locale-key parity, fixture validation, source privacy/offline guards, handoff files). `npm run test:ui` was attempted and **blocked before browser launch**: Playwright is available but its Chromium headless-shell executable is absent. The earlier installer returned truncated/invalid archives, so this run did not repeat the failed download. The smoke script now contains 14 browser scenarios, including four new edit/validation/cancel/reload/reorder scenarios, but none of the browser interactions or screenshots are verified. No UI/visual pass is claimed. Retry in a supported working browser environment before release; never bypass network restrictions or repeatedly retry an unchanged failed download.
 
 ## Next bounded milestones (one per run)
 
 | Order | Work | Acceptance |
 | --- | --- | --- |
-| M02 | Schedule editing: start/day/reorder via time, explicit manual movement/break estimates | No automatic routing; conflicts include buffers; safe calendar validation; bilingual tests |
+| M02 (implemented) | Schedule editing: start/day/reorder via time, explicit manual movement/break estimates | Domain/storage/locale checks passed; browser verification pending |
 | M03 | Export/import backup and local schema migration | Validate entire import before change; preview + confirmation; preserve corrupt/old data; no secrets; round-trip tests |
 | M04 | Local unit authoring and immutable version editing | 1–5 points; source language; drafts clearly local/private; old trip snapshots unchanged; no fake public publishing |
 | M05 | Local improvement proposals and attributed derivatives | New derivative identity with source/version; proposals don't silently edit originals; no fake notifications |
@@ -27,10 +29,10 @@ Photo uploads are deferred; add only if metadata stripping/validation can be saf
 ## Known limitations / next action
 
 - Sample content only in Seoul/Seongsu; region selector is manually operated but currently has one seeded option.
-- No schedule-edit UI yet. For now remove/re-add to change time; warn about overlaps, never claim optimized routes.
+- Schedule editor is implemented, but browser interactions/layout remain unverified. Estimates are manual, after the associated item, default zero; users must review them after reordering. Overlap warnings do not prevent saving; no optimized routes are claimed.
 - localStorage is small and device-specific. Quota/corrupt/stale-tab writes are refused. There is no cross-device sync or backup yet.
 - Notes are explicit-save; unsaved input protection is a later regression item. No real accounts or secure authentication.
 - My units intentionally shows a forthcoming state until M04; no inert publish button.
 - No service worker yet; no installability/offline claims.
 
-Start the next run by checking whether browser validation is now available, then **M02**. An unavailable browser does not authorize claiming UI tests passed; continue safe domain/client work with the limitation recorded. A reproducible application test failure takes precedence over features. Re-read current HEAD and preserve any intervening user changes. Each run must update version, changelog, this file and actual check results; commit through the authorized GitHub connection with a fast-forward update. Stop for protection/permission barriers. On backlog completion or when everything remaining requires user/backend authority, report once and pause only this project's task.
+Start the next run by checking whether browser validation is now available, then **M03: export/import backup and local schema migration**. Validate and preview the entire import before explicit confirmation; preserve existing data on rejection/failure. An unavailable browser does not authorize claiming UI tests passed; continue safe domain/client work with the limitation recorded. A reproducible application test failure takes precedence over features. Re-read current HEAD and preserve any intervening user changes. Each run must update version, changelog, this file and actual check results; commit through the authorized GitHub connection with a fast-forward update. Stop for protection/permission barriers. On backlog completion or when everything remaining requires user/backend authority, report once and pause only this project's task.

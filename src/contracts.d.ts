@@ -16,8 +16,13 @@ export interface UnitVersion {
 }
 export interface ScheduleItem {
   id: string; date: LocalDate; startTime: LocalTime; durationMinutes: number;
+  movementMinutes?: number; breakMinutes?: number; // manual estimates AFTER activity; absent legacy fields mean 0
   unitId: string; unitVersionId: string; snapshot: UnitVersion;
 }
+export interface ScheduleItemPatch {
+  date?: LocalDate; startTime?: LocalTime; durationMinutes?: number;
+  movementMinutes?: number; breakMinutes?: number;
+} // no snapshot/identity/record edits; revision is supplied separately
 export interface Trip {
   id: string; name: string; startDate: LocalDate; endDate: LocalDate;
   region: Region; visibility: 'private'; items: ScheduleItem[];

@@ -1,6 +1,6 @@
 import { catalog } from './catalog.js';
 import { dictionaries, resolveLocale, textFor, costLabel } from './i18n.js';
-import { initialState, createTrip, dateRange, addItem, findConflicts, minutesOf, timeOf, createRecord, filterUnits } from './domain.js';
+import { initialState, createTrip, dateRange, addItem, updateItem, sortedItems, scheduleEnd, findConflicts, minutesOf, timeOf, createRecord, filterUnits } from './domain.js';
 import { LocalRepository } from './repository.js';
 
 const root = document.querySelector('#app');
@@ -42,14 +42,17 @@ function trips() {
   const trip=selectedTrip();
   if (!trip) return `<section class="hero"><h1 tabindex="-1">${t('titleTrips')}</h1><p>${t('myTripsIntro')}</p></section><div class="empty"><p>${t('noTrips')}</p>${button('create-trip',t('newTrip'))}</div>`;
   ui.tripId=trip.id; const days=dateRange(trip.startDate,trip.endDate); if (!days.includes(ui.day)) ui.day=days[0];
-  const items=trip.items.filter(x=>x.date===ui.day).sort((a,b)=>a.startTime.localeCompare(b.startTime)); const conflicts=findConflicts(items);
-  return `<div class="section-heading"><div><p class="eyebrow">${t('private')}</p><h1 tabindex="-1">${esc(trip.name)}</h1><p class="muted">${trip.startDate} — ${trip.endDate} · ${t('seongsu')}</p></div>${button('create-trip',t('newTrip'),'','secondary')}</div><label class="trip-select">${t('selectTrip')}<select id="trip-select">${state.trips.map(x=>option(x.id,x.name,trip.id)).join('')}</select></label><div class="days" aria-label="${t('day')}">${days.map((d,i)=>button('day',`Day ${i+1} · ${d.slice(5)}`,`data-date="${d}" aria-pressed="${ui.day===d}"`,'day-button')).join('')}</div><p class="muted">${t('laterMovement')}</p>${conflicts.length?`<p class="warning" role="status">${t('conflict')}</p>`:''}<div class="timeline">${items.map(item=>`<article class="schedule-card"><div class="time">${item.startTime}<span>${timeOf(minutesOf(item.startTime)+item.durationMinutes)}</span></div><div class="schedule-body"><span class="status ${state.records[item.id]?.status==='complete'?'done':''}">${t(state.records[item.id]?.status||'planned')}</span><h2>${tx(item.snapshot.title,item.snapshot.sourceLocale)}</h2>${stats(item.snapshot)}<div class="actions">${button('experience',t('experience'),`data-id="${item.id}"`,'secondary')}${button('remove',t('remove'),`data-id="${item.id}"`,'text-button')}</div></div></article>`).join('') || `<div class="empty">${t('noItems')}</div>`}</div>${button('back-discover','+ '+t('addMore'),'','primary full')}`;
+  const items=sortedItems(trip.items.filter(x=>x.date===ui.day)); const conflicts=findConflicts(items);
+  return `<div class="section-heading"><div><p class="eyebrow">${t('private')}</p><h1 tabindex="-1">${esc(trip.name)}</h1><p class="muted">${trip.startDate} — ${trip.endDate} · ${t('seongsu')}</p></div>${button('create-trip',t('newTrip'),'','secondary')}</div><label class="trip-select">${t('selectTrip')}<select id="trip-select">${state.trips.map(x=>option(x.id,x.name,trip.id)).join('')}</select></label><div class="days" aria-label="${t('day')}">${days.map((d,i)=>button('day',`Day ${i+1} · ${d.slice(5)}`,`data-date="${d}" aria-pressed="${ui.day===d}"`,'day-button')).join('')}</div><p class="muted">${t('laterMovement')}</p>${conflicts.length?`<p class="warning" role="status">${t('conflict')}</p>`:''}<div class="timeline">${items.map(item=>`<article class="schedule-card"><div class="time">${item.startTime}<span>${timeOf(minutesOf(item.startTime)+item.durationMinutes)}</span></div><div class="schedule-body"><span class="status ${state.records[item.id]?.status==='complete'?'done':''}">${t(state.records[item.id]?.status||'planned')}</span><h2>${tx(item.snapshot.title,item.snapshot.sourceLocale)}</h2>${scheduleStats(item)}<div class="actions">${button('edit-schedule',t('editSchedule'),`data-id="${item.id}"`,'secondary')}${button('experience',t('experience'),`data-id="${item.id}"`,'secondary')}${button('remove',t('remove'),`data-id="${item.id}"`,'text-button')}</div></div></article>`).join('') || `<div class="empty">${t('noItems')}</div>`}</div>${button('back-discover','+ '+t('addMore'),'','primary full')}`;
+}
+function scheduleStats(item) {
+  return `<p class="small">${t('plannedTime')}: ${item.durationMinutes} ${t('minutes')} · ${esc(costLabel(item.snapshot.cost,locale()))} · ${item.snapshot.points.length} ${t('points')}</p><p class="small">${t('movement')}: ${item.movementMinutes??0} ${t('minutes')} · ${t('breakTime')}: ${item.breakMinutes??0} ${t('minutes')}</p><p class="small muted">${t('reservedUntil')}: ${timeOf(scheduleEnd(item))} · ${t('version')} ${item.snapshot.version}</p>`;
 }
 function experience() {
   const item=selectedItem(); if (!item) return trips(); const record=state.records[item.id];
   return `<div class="narrow">${button('back-trips','← '+t('back'),'','text-button')}<section class="detail-card"><p class="eyebrow">${t('todayExperience')}</p><h1 tabindex="-1">${tx(item.snapshot.title,item.snapshot.sourceLocale)}</h1><p>${t('checklist')}</p><form id="record-form"><div class="checklist">${item.snapshot.points.map(p=>`<label><input type="checkbox" name="point" value="${esc(p.id)}" ${record?.checkedIds.includes(p.id)?'checked':''}><span>${tx(p.text,item.snapshot.sourceLocale)}</span></label>`).join('')}</div><label>${t('note')}<textarea name="note" maxlength="2000" rows="5" placeholder="${t('noteHint')}">${esc(record?.note||'')}</textarea></label><p class="small muted">${t('selfReported')}</p><button class="primary full" type="submit">${t('saveRecord')}</button></form></section></div>`;
 }
-function settings() { return `<div class="narrow"><h1 tabindex="-1">${t('settings')}</h1><section class="detail-card">${languageSelect('settings-language')}<p class="muted">${t('contentLanguage')}</p></section>${['privacy','storage','server'].map(k=>`<section class="setting-card"><h2>${t(k+'Title')}</h2><p>${t(k+'Body')}</p></section>`).join('')}<p class="small muted">Yamone Trip · v0.1.0</p></div>`; }
+function settings() { return `<div class="narrow"><h1 tabindex="-1">${t('settings')}</h1><section class="detail-card">${languageSelect('settings-language')}<p class="muted">${t('contentLanguage')}</p></section>${['privacy','storage','server'].map(k=>`<section class="setting-card"><h2>${t(k+'Title')}</h2><p>${t(k+'Body')}</p></section>`).join('')}<p class="small muted">Yamone Trip · v0.2.0</p></div>`; }
 function render() {
   document.documentElement.lang=locale(); document.title=t('brand'); document.querySelector('#skip').textContent=t('skip');
   const active=['detail'].includes(ui.page)?'discover':ui.page==='experience'?'trips':ui.page;
@@ -66,6 +69,11 @@ function addDialog(unitId,tripId) {
   const trip=state.trips.find(x=>x.id===tripId)||selectedTrip(); ui.pendingUnit=unitId;
   showDialog(`<form id="add-form"><h2>${t('add')}</h2><label>${t('chooseTrip')}<select name="tripId" id="add-trip">${state.trips.map(x=>option(x.id,x.name,trip.id)).join('')}</select></label><label>${t('day')}<select name="date">${dateRange(trip.startDate,trip.endDate).map(d=>option(d,d,ui.day)).join('')}</select></label><label>${t('start')}<input name="startTime" type="time" value="09:00" required></label><p class="small muted">${t('laterMovement')}</p>${dialogEnd()}`);
 }
+function editScheduleDialog(itemId) {
+  const trip=selectedTrip(), item=trip?.items.find(x=>x.id===itemId);
+  if (!item) throw new Error('invalidSchedule');
+  showDialog(`<form id="schedule-form" data-item-id="${esc(item.id)}" data-trip-id="${esc(trip.id)}"><h2>${t('editSchedule')}</h2><p>${tx(item.snapshot.title,item.snapshot.sourceLocale)}</p><label>${t('day')}<select name="date">${dateRange(trip.startDate,trip.endDate).map(d=>option(d,d,item.date)).join('')}</select></label><label>${t('start')}<input name="startTime" type="time" value="${esc(item.startTime)}" required></label>${[['durationMinutes','plannedDuration',1],['movementMinutes','movementMinutes',0],['breakMinutes','breakMinutes',0]].map(([name,key,min])=>`<label>${t(key)}<input name="${name}" type="number" min="${min}" max="1440" step="1" value="${item[name]??0}" required></label>`).join('')}<p class="small muted">${t('scheduleHelp')}</p>${dialogEnd()}`);
+}
 root.addEventListener('click',event=>{
   const b=event.target.closest('[data-action]'); if (!b) return;
   try {
@@ -80,6 +88,7 @@ root.addEventListener('click',event=>{
       case 'add': addDialog(b.dataset.id); break;
       case 'close': document.querySelector('#modal').close(); break;
       case 'day': ui.day=b.dataset.date; render(); break;
+      case 'edit-schedule': editScheduleDialog(b.dataset.id); break;
       case 'experience': ui.itemId=b.dataset.id; go('experience'); break;
       case 'remove': if (window.confirm(t('removeConfirm'))) { persist(s=>{ const trip=s.trips.find(x=>x.id===ui.tripId); trip.items=trip.items.filter(x=>x.id!==b.dataset.id); delete s.records[b.dataset.id]; }); render(); announce('saved'); } break;
     }
@@ -111,6 +120,20 @@ root.addEventListener('submit',event=>{
       const tripId=data.get('tripId'), unit=catalog.find(x=>x.id===ui.pendingUnit);
       persist(s=>{const index=s.trips.findIndex(x=>x.id===tripId); s.trips[index]=addItem(s.trips[index],unit,{date:data.get('date'),startTime:data.get('startTime')},crypto.randomUUID());});
       ui.tripId=tripId; ui.day=data.get('date'); ui.pendingUnit=null; go('trips'); announce('saved');
+    }
+    if (form.id==='schedule-form') {
+      const patch={date:data.get('date'),startTime:data.get('startTime')};
+      for (const key of ['durationMinutes','movementMinutes','breakMinutes']) {
+        const value=data.get(key);
+        if (typeof value!=='string' || !/^\d+$/.test(value)) throw new Error('invalidSchedule');
+        patch[key]=Number(value);
+      }
+      persist(s=>{
+        const index=s.trips.findIndex(x=>x.id===form.dataset.tripId);
+        if (index<0) throw new Error('invalidSchedule');
+        s.trips[index]=updateItem(s.trips[index],form.dataset.itemId,patch);
+      });
+      ui.tripId=form.dataset.tripId; ui.day=patch.date; go('trips'); announce('saved');
     }
     if (form.id==='record-form') { const item=selectedItem(); const record=createRecord(item,data.getAll('point'),data.get('note')); persist(s=>{s.records[item.id]=record;}); go('trips'); announce('savedRecord'); }
   } catch(error) { const key=dictionaries[locale()][error.message]?error.message:'invalid'; const target=form.querySelector('.form-error'); if(target) target.textContent=t(key); else announce(key); }

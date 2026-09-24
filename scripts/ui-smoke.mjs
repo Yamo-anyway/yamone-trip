@@ -56,6 +56,48 @@ try {
   await page.reload();assert.equal(await page.locator('html').getAttribute('lang'),'en'); scenarios++;
   await page.locator('[data-id=forest-walk]').first().click();await page.locator('[data-action=add]').click();await page.locator('#add-form [type=submit]').click();
   assert.equal(await page.locator('.warning').count(),1); scenarios++;
+  // M02: keep this completed item's record/snapshot while moving and editing it.
+  const storageBeforeEdit=await page.evaluate(()=>JSON.parse(localStorage.getItem('yamone-trip:state:v1')));
+  await page.locator('[data-action=edit-schedule]').first().click();
+  assert.equal(await page.locator('#schedule-form h2').textContent(),'Edit schedule');
+  await page.locator('#schedule-form [name=startTime]').fill('23:30');
+  await page.locator('#schedule-form [name=movementMinutes]').fill('10');
+  await page.locator('#schedule-form [type=submit]').click();
+  assert.match(await page.locator('#schedule-form .form-error').textContent(),/midnight/);
+  assert.equal(await page.locator('#schedule-form [name=movementMinutes]').inputValue(),'10');
+  assert.deepEqual(await page.evaluate(()=>JSON.parse(localStorage.getItem('yamone-trip:state:v1'))),storageBeforeEdit); scenarios++;
+  await page.locator('#schedule-form [name=date]').selectOption('2026-10-02');
+  await page.locator('#schedule-form [name=startTime]').fill('10:00');
+  await page.locator('#schedule-form [name=durationMinutes]').fill('45');
+  await page.locator('#schedule-form [name=movementMinutes]').fill('15');
+  await page.locator('#schedule-form [name=breakMinutes]').fill('10');
+  await page.locator('#schedule-form [type=submit]').click();
+  assert.equal(await page.locator('.schedule-card').count(),1);
+  assert.equal(await page.locator('.status').textContent(),'Complete');
+  assert.match(await page.locator('.schedule-card').textContent(),/11:10/);
+  const afterEdit=await page.evaluate(()=>JSON.parse(localStorage.getItem('yamone-trip:state:v1')));
+  assert.deepEqual(afterEdit.records,storageBeforeEdit.records);
+  assert.deepEqual(afterEdit.trips[0].items[0].snapshot,storageBeforeEdit.trips[0].items[0].snapshot); scenarios++;
+  await page.reload();await page.locator('[data-page=trips]').click();
+  await page.locator('[data-date="2026-10-02"]').click();
+  assert.equal(await page.locator('.status').textContent(),'Complete');
+  await page.locator('#header-language').selectOption('ko');
+  await page.locator('[data-action=edit-schedule]').click();
+  assert.equal(await page.locator('#schedule-form h2').textContent(),'일정 편집');
+  assert.equal(await page.locator('#schedule-form [name=durationMinutes]').inputValue(),'45');
+  await page.locator('#schedule-form [name=startTime]').fill('12:00');
+  await page.locator('#schedule-form [data-action=close]').click();
+  await page.locator('[data-action=edit-schedule]').click();
+  assert.equal(await page.locator('#schedule-form [name=startTime]').inputValue(),'10:00'); scenarios++;
+  // Move back onto day 1 before the existing 09:00 item, with a buffer-only overlap.
+  await page.locator('#schedule-form [name=date]').selectOption('2026-10-01');
+  await page.locator('#schedule-form [name=startTime]').fill('08:00');
+  await page.locator('#schedule-form [type=submit]').click();
+  assert.equal(await page.locator('.schedule-card').count(),2);
+  assert.match(await page.locator('.time').first().textContent(),/^08:00/);
+  assert.equal(await page.locator('.warning').count(),1);
+  await page.screenshot({path:'test-results/schedule-edited-ko.png',fullPage:true});scenarios++;
+  await page.locator('#header-language').selectOption('en');
   await page.locator('[data-page=discover]').click();await page.setViewportSize({width:320,height:720});
   assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'320px horizontal overflow');
   await page.screenshot({path:'test-results/discover-small-en.png',fullPage:true}); scenarios++;
@@ -65,5 +107,5 @@ try {
   const brokenPage=await broken.newPage();await brokenPage.goto(origin);assert.equal(await brokenPage.locator('[role=alert]').count(),1);
   await brokenPage.locator('#header-language').selectOption('ko');assert.equal(await brokenPage.evaluate(()=>localStorage.getItem('yamone-trip:state:v1')),'{broken');await broken.close();scenarios++;
   assert.deepEqual(errors,[]);assert.deepEqual(external,[]);
-  console.log(`PASS: ${scenarios} browser scenarios; ko/en, search, trip creation, completion, reload, escaping, conflicts, narrow layout and corrupt storage. No browser errors or external requests.`);
+  console.log(`PASS: ${scenarios} browser scenarios; ko/en, search, trip creation, completion, reload, escaping, schedule editing/cancel/validation/buffers, conflicts, narrow layout and corrupt storage. No browser errors or external requests.`);
 } finally { await browser.close(); await new Promise(resolve=>server.close(resolve)); }

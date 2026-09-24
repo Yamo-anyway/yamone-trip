@@ -40,10 +40,34 @@ export function createTrip({name,startDate,endDate,region},id) {
   dateRange(startDate,endDate);
   return {id,name:name.trim(),startDate,endDate,region:structuredClone(region),visibility:'private',items:[]};
 }
+export function scheduleEnd(item) {
+  const values=[item.durationMinutes,item.movementMinutes===undefined?0:item.movementMinutes,item.breakMinutes===undefined?0:item.breakMinutes];
+  if (values.some(v=>!Number.isInteger(v) || v<0 || v>1440) || values[0]<1) throw new Error('invalidSchedule');
+  const end=minutesOf(item.startTime)+values.reduce((sum,v)=>sum+v,0);
+  if (end>1440) throw new Error('invalidSchedule');
+  return end;
+}
+function validateSchedule(trip,item) {
+  if (!dateRange(trip.startDate,trip.endDate).includes(item.date)) throw new Error('invalidSchedule');
+  scheduleEnd(item);
+}
+export function sortedItems(items) {
+  return [...items].sort((a,b)=>a.date.localeCompare(b.date) || a.startTime.localeCompare(b.startTime));
+}
+export function updateItem(trip,itemId,patch) {
+  const keys=['date','startTime','durationMinutes','movementMinutes','breakMinutes'];
+  if (!patch || typeof patch!=='object' || Array.isArray(patch) || Object.keys(patch).some(k=>!keys.includes(k) || patch[k]===undefined)) throw new Error('invalidSchedule');
+  const index=trip.items.findIndex(item=>item.id===itemId);
+  if (index<0) throw new Error('invalidSchedule');
+  const item={...trip.items[index],...patch};
+  validateSchedule(trip,item);
+  return {...trip,items:trip.items.map((previous,i)=>i===index?item:previous)};
+}
 export function addItem(trip,unit,{date,startTime},id) {
   validateUnit(unit);
-  if (!dateRange(trip.startDate,trip.endDate).includes(date) || minutesOf(startTime)+unit.durationMinutes>1440) throw new Error('invalidSchedule');
-  return {...trip,items:[...trip.items,{id,date,startTime,durationMinutes:unit.durationMinutes,unitId:unit.id,unitVersionId:unit.versionId,snapshot:structuredClone(unit)}]};
+  const item={id,date,startTime,durationMinutes:unit.durationMinutes,movementMinutes:0,breakMinutes:0,unitId:unit.id,unitVersionId:unit.versionId,snapshot:structuredClone(unit)};
+  validateSchedule(trip,item);
+  return {...trip,items:[...trip.items,item]};
 }
 export function findConflicts(items) {
   const pairs=[];
@@ -51,7 +75,7 @@ export function findConflicts(items) {
     const a=items[i],b=items[j];
     if (a.date!==b.date) continue;
     const startA=minutesOf(a.startTime),startB=minutesOf(b.startTime);
-    if (startA<startB+b.durationMinutes && startB<startA+a.durationMinutes) pairs.push([a.id,b.id]);
+    if (startA<scheduleEnd(b) && startB<scheduleEnd(a)) pairs.push([a.id,b.id]);
   }
   return pairs;
 }
@@ -79,6 +103,7 @@ export function assertState(state) {
     tripIds.add(trip.id);
     for (const item of trip.items) {
       validateUnit(item.snapshot);
+      validateSchedule(trip,item);
       if (!validId(item.id) || ids.has(item.id) || !dateRange(trip.startDate,trip.endDate).includes(item.date) || !Number.isInteger(item.durationMinutes) || item.durationMinutes<1 || minutesOf(item.startTime)+item.durationMinutes>1440 || item.unitVersionId!==item.snapshot.versionId || item.unitId!==item.snapshot.id) throw new Error('loadError');
       ids.add(item.id);
     }

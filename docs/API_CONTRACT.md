@@ -1,4 +1,4 @@
-# Future API contract — proposal v0.1
+# Future API contract — proposal v0.2
 
 This is a handoff proposal, not a deployed API or a backend implementation. All UI data currently comes from local fixtures/storage. `src/api.js` is disabled by default and is not imported by the UI. `src/contracts.d.ts` defines matching data shapes without requiring a TypeScript build.
 
@@ -22,7 +22,7 @@ This is a handoff proposal, not a deployed API or a backend implementation. All 
 | POST `/v1/trips` | name, startDate, endDate, region | 201 `Trip`, private by default |
 | GET `/v1/trips` | cursor | Owner-only `Page<Trip>` |
 | POST `/v1/trips/{tripId}/items` | date, startTime, unitId, unitVersionId | 201 `ScheduleItem`; backend resolves authoritative version snapshot; never trust client snapshot as published content |
-| PATCH `/v1/trips/{tripId}/items/{itemId}` | approved editable schedule fields + revision | Updated item; reject stale update and out-of-range/cross-midnight schedule |
+| PATCH `/v1/trips/{tripId}/items/{itemId}` | `ScheduleItemPatch` + revision | Updated item; reject stale update and out-of-range/cross-midnight schedule including movement/break buffers |
 | DELETE `/v1/trips/{tripId}/items/{itemId}` | revision | 204; handle associated private records consistently |
 | PUT `/v1/trips/{tripId}/items/{itemId}/record` | checkedIds, note, skipped flag, revision | `ExperienceRecord`; server derives status; 1–5 matching point IDs; self-reported only |
 
@@ -38,6 +38,17 @@ Example add-item request (client does not make this call today):
 ```
 
 Expected error families: 400/422 validation, 401 reauthenticate, 403 owner/permission mismatch, 404 unavailable, 409/412 concurrency, 429 rate limit, 5xx retryable read failure. Preserve unsaved client input on failures; do not claim that a local draft has been publicly saved.
+
+## Schedule editing semantics (M02)
+
+`ScheduleItemPatch` permits only `date`, `startTime`, `durationMinutes`, `movementMinutes` and `breakMinutes`. These are personal schedule overrides, not unit-version edits. Reject unknown fields; the original snapshot, item identity, version identity and associated experience record remain unchanged. Changing the day/time must not create a new completion or growth event.
+
+- Date must be a real calendar day inside the trip, including leap-year validation.
+- Start is `00:00`–`23:59`; duration is a positive integer, movement/break are nonnegative integers, each at most 1440 minutes. The total must end at or before `24:00` on that day. This is a same-day client constraint, not a service age/country/growth policy.
+- Reserve time in the order **experience → manually estimated movement → manually estimated break**. These estimates belong to the preceding item (including the last item of a day); they are not a calculated route, actual movement history, or a link to another place. Users must review estimates when reordering.
+- Sort presentation by date then start time, keeping insertion order on a tie. Do not shift other items automatically. An overlap warning covers the half-open interval `[start, start + duration + movement + break)`; adjacent endpoints do not conflict. Conflicts warn but do not block saving.
+- For existing schema-v1 local data, missing movement/break fields mean zero without rewriting on load. Explicit `null`, strings, negatives, fractions and overrun values are invalid. No schema migration or actual endpoint call is introduced in M02.
+- Existing server revision/idempotency/owner checks still apply when the backend is eventually connected. The current UI only writes validated browser storage; stale-tab/quota errors leave the edit dialog open with its input intact.
 
 ## Later content endpoints — design slots, not ready implementations
 
