@@ -2,12 +2,12 @@
   "expo": {
     "name": "Yamone Trip",
     "slug": "yamone-trip",
-    "version": "0.5.0",
+    "version": "0.6.0",
     "platforms": ["android"],
     "updates": {"enabled": false},
     "android": {
       "package": "com.yamone.trip.dev",
-      "versionCode": 5,
+      "versionCode": 6,
       "allowBackup": false,
       "permissions": [],
       "blockedPermissions": [

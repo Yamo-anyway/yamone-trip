@@ -1,9 +1,9 @@
-export const SCHEMA_VERSION = 1;
+export const SCHEMA_VERSION = 2;
 // Domain DTOs cross JSON storage/API boundaries. Do not require browser-only globals.
 const cloneDto = value => JSON.parse(JSON.stringify(value));
 const validId = value => typeof value==='string' && /^[A-Za-z0-9_-]{1,128}$/.test(value);
 export function initialState() {
-  return { schemaVersion:SCHEMA_VERSION, preference:'auto', trips:[], records:{} };
+  return { schemaVersion:SCHEMA_VERSION, preference:'auto', trips:[], records:{}, localUnits:[], unitDrafts:[] };
 }
 export function validDate(value) {
   if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
@@ -24,8 +24,8 @@ export function timeOf(minutes) { return `${String(Math.floor(minutes/60)).padSt
 export function validateUnit(unit) {
   if (!unit || typeof unit.id !== 'string' || !unit.id || typeof unit.versionId !== 'string' || !unit.versionId || !unit.title || typeof unit.title !== 'object' || !Object.values(unit.title).every(v=>typeof v==='string') || !Object.values(unit.title).some(v=>v.trim())) throw new Error('invalid');
   if (!Number.isInteger(unit.durationMinutes) || unit.durationMinutes<1 || unit.durationMinutes>1440) throw new Error('invalid');
-  if (!['walk','cafe','sightseeing'].includes(unit.category) || unit.transport!=='walk' || !['seed','sprout'].includes(unit.growth) || !['first_hand','ai_draft'].includes(unit.sourceType)) throw new Error('invalid');
-  if (typeof unit.sourceLocale!=='string' || typeof unit.author!=='string' || !Number.isInteger(unit.version) || unit.version<1) throw new Error('invalid');
+  if (!['walk','cafe','sightseeing'].includes(unit.category) || unit.transport!=='walk' || !['seed','sprout'].includes(unit.growth) || !['first_hand','ai_draft','user_authored'].includes(unit.sourceType)) throw new Error('invalid');
+  if (typeof unit.sourceLocale!=='string' || !/^[A-Za-z]{2,3}(?:-[A-Za-z0-9]{2,8}){0,2}$/.test(unit.sourceLocale) || typeof unit.author!=='string' || !Number.isInteger(unit.version) || unit.version<1) throw new Error('invalid');
   if (!unit.region || ['country','city','district'].some(k=>typeof unit.region[k]!=='string' || !unit.region[k])) throw new Error('invalid');
   if (!unit.cost || !Number.isFinite(unit.cost.amount) || unit.cost.amount<0 || !/^[A-Z]{3}$/.test(unit.cost.currency)) throw new Error('invalid');
   for (const key of ['description','place','tip']) if (!unit[key] || typeof unit[key]!=='object' || Array.isArray(unit[key]) || !Object.values(unit[key]).every(v=>typeof v==='string')) throw new Error('invalid');
@@ -96,8 +96,32 @@ export function filterUnits(units,{query='',maxMinutes=0,category='',maxCost=nul
     && (maxCost===null || u.cost.amount<=Number(maxCost))
     && (!q || [...Object.values(u.title),...Object.values(u.description),...Object.values(u.place)].join(' ').toLocaleLowerCase().includes(q)));
 }
+
+export function validateUnitDraft(draft) {
+  if (!draft || !validId(draft.id) || (draft.unitId!==null && !validId(draft.unitId)) || (draft.baseVersionId!==null && !validId(draft.baseVersionId)) || draft.visibility!=='private') throw new Error('invalidUnitDraft');
+  if ((draft.unitId===null)!==(draft.baseVersionId===null) || typeof draft.sourceLocale!=='string' || !/^[A-Za-z]{2,3}(?:-[A-Za-z0-9]{2,8}){0,2}$/.test(draft.sourceLocale)) throw new Error('invalidUnitDraft');
+  if (!draft.region || ['country','city','district'].some(key=>typeof draft.region[key]!=='string' || !draft.region[key]) || !['walk','cafe','sightseeing'].includes(draft.category) || draft.transport!=='walk') throw new Error('invalidUnitDraft');
+  if (!Number.isInteger(draft.durationMinutes) || draft.durationMinutes<1 || draft.durationMinutes>1440 || !draft.cost || !Number.isFinite(draft.cost.amount) || draft.cost.amount<0 || !/^[A-Z]{3}$/.test(draft.cost.currency)) throw new Error('invalidUnitDraft');
+  for (const [key,max,required] of [['title',120,true],['description',1000,true],['place',300,true],['tip',500,false]]) {
+    if (typeof draft[key]!=='string' || draft[key].length>max || (required && !draft[key].trim())) throw new Error('invalidUnitDraft');
+  }
+  if (!Array.isArray(draft.points) || draft.points.length<1 || draft.points.length>5) throw new Error('invalidUnitDraft');
+  const pointIds=new Set();
+  for (const point of draft.points) {
+    if (!point || !validId(point.id) || pointIds.has(point.id) || typeof point.text!=='string' || !point.text.trim() || point.text.length>300) throw new Error('invalidUnitDraft');
+    pointIds.add(point.id);
+  }
+  return draft;
+}
+
+/** Schema v1 is upgraded in memory; storage is rewritten only by a later explicit user save. */
+export function migrateState(value) {
+  if (value?.schemaVersion===1) return assertState({...cloneDto(value),schemaVersion:SCHEMA_VERSION,localUnits:[],unitDrafts:[]});
+  return assertState(value);
+}
+
 export function assertState(state) {
-  if (!state || state.schemaVersion!==SCHEMA_VERSION || !['auto','ko','en'].includes(state.preference) || !Array.isArray(state.trips) || !state.records || typeof state.records!=='object' || Array.isArray(state.records)) throw new Error('loadError');
+  if (!state || state.schemaVersion!==SCHEMA_VERSION || !['auto','ko','en'].includes(state.preference) || !Array.isArray(state.trips) || !state.records || typeof state.records!=='object' || Array.isArray(state.records) || !Array.isArray(state.localUnits) || !Array.isArray(state.unitDrafts)) throw new Error('loadError');
   const ids=new Set(),tripIds=new Set();
   for (const trip of state.trips) {
     createTrip(trip,trip.id);
@@ -115,6 +139,28 @@ export function assertState(state) {
     if (!item || record.scheduleItemId!==id || record.unitVersionId!==item.unitVersionId || record.verification!=='self_reported') throw new Error('loadError');
     const checked=createRecord(item,record.checkedIds,record.note,record.status==='skipped');
     if (checked.status!==record.status) throw new Error('loadError');
+  }
+  const localIds=new Set(),versionIds=new Set();
+  for (const local of state.localUnits) {
+    if (!local || !validId(local.id) || localIds.has(local.id) || local.visibility!=='private' || !Array.isArray(local.versions) || !local.versions.length) throw new Error('loadError');
+    localIds.add(local.id);
+    const locale=local.versions[0]?.sourceLocale;
+    local.versions.forEach((version,index)=>{
+      validateUnit(version);
+      if (version.id!==local.id || version.sourceType!=='user_authored' || version.author!=='local-device' || version.sourceLocale!==locale || version.version!==index+1 || !validId(version.versionId) || versionIds.has(version.versionId)) throw new Error('loadError');
+      versionIds.add(version.versionId);
+    });
+  }
+  const draftIds=new Set();
+  for (const draft of state.unitDrafts) {
+    validateUnitDraft(draft);
+    if (draftIds.has(draft.id)) throw new Error('loadError');
+    draftIds.add(draft.id);
+    if (draft.unitId!==null) {
+      const local=state.localUnits.find(unit=>unit.id===draft.unitId);
+      const latest=local?.versions.at(-1);
+      if (!latest || latest.versionId!==draft.baseVersionId || latest.sourceLocale!==draft.sourceLocale) throw new Error('loadError');
+    }
   }
   return state;
 }

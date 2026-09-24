@@ -1,4 +1,4 @@
-import {assertState,initialState} from './domain.js';
+import {assertState,initialState,migrateState} from './domain.js';
 export const STORAGE_KEY='yamone-trip:state:v1';
 export class LocalRepository {
   constructor(storage) { this.storage=storage; this.readFailed=false; this.lastRead=null; }
@@ -6,7 +6,7 @@ export class LocalRepository {
     try {
       const raw=this.storage.getItem(STORAGE_KEY);
       this.lastRead=raw;
-      return raw===null?initialState():assertState(JSON.parse(raw));
+      return raw===null?initialState():migrateState(JSON.parse(raw));
     } catch { this.readFailed=true; throw new Error('loadError'); }
   }
   save(state) {

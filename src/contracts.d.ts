@@ -7,7 +7,7 @@ export interface Region { country: string; city: string; district: string }
 export interface ExperiencePoint { id: string; text: LocalizedText }
 export interface UnitVersion {
   id: string; versionId: string; version: number;
-  sourceLocale: string; sourceType: 'first_hand' | 'ai_draft';
+  sourceLocale: string; sourceType: 'first_hand' | 'ai_draft' | 'user_authored';
   growth: 'seed' | 'sprout'; author: string; region: Region;
   category: 'walk' | 'cafe' | 'sightseeing'; transport: 'walk';
   durationMinutes: number; cost: { amount: number; currency: string };

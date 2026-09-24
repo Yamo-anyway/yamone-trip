@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { catalog } from '../src/catalog.js';
 import { addItem, createRecord, createTrip, initialState } from '../src/domain.js';
 import { BACKUP_FORMAT, MAX_BACKUP_BYTES, canonicalState, createBackup, parseBackup } from '../native/backup.js';
+import { draftFromLatest, makeUnitDraft, publishUnitDraft, saveUnitDraft } from '../native/authoring.js';
 
 function populatedState() {
   let trip = createTrip({
@@ -23,7 +24,7 @@ test('native backup round trip preserves private trips, exact snapshots and note
   assert.deepEqual(parsed.state, canonicalState(state));
   assert.equal(parsed.state.trips[0].items[0].unitVersionId, catalog[0].versionId);
   assert.equal(parsed.state.records['backup-item'].note, 'Synthetic private note');
-  assert.deepEqual(parsed.preview, {source:'backup_v1', ...options, preference:'en', tripCount:1, itemCount:1, recordCount:1});
+  assert.deepEqual(parsed.preview, {source:'backup_v1', ...options, preference:'en', tripCount:1, itemCount:1, recordCount:1, localUnitCount:0, draftCount:0});
 });
 
 test('backup envelope is versioned and contains no account, sync or publication claim', () => {
@@ -33,12 +34,14 @@ test('backup envelope is versioned and contains no account, sync or publication 
 });
 
 test('legacy raw schema-v1 import is explicit and gets a privacy-safe preview', () => {
-  const state = populatedState();
+  const current = populatedState();
+  const {localUnits,unitDrafts,...state}=current; state.schemaVersion=1;
   const parsed = parseBackup(JSON.stringify(state));
   assert.equal(parsed.preview.source, 'legacy_raw_v1');
   assert.equal(parsed.preview.createdAt, null);
   assert.equal(parsed.preview.recordCount, 1);
   assert(!('note' in parsed.preview)); assert.deepEqual(parsed.state, canonicalState(state));
+  assert.equal(parsed.state.schemaVersion,2); assert.deepEqual(parsed.state.localUnits,[]);
 });
 
 test('canonical import drops unknown envelope and nested fields before persistence', () => {
@@ -76,4 +79,13 @@ test('backup metadata must use a canonical instant and semantic app version', ()
   for (const bad of [
     {...options, createdAt:'2026-09-24'}, {...options, createdAt:'not-a-date'}, {...options, appVersion:'latest'},
   ]) assert.throws(() => createBackup(initialState(), bad), /backupError/);
+});
+
+test('backup round trip preserves local immutable versions and private authoring drafts',()=>{
+  const input={sourceLocale:'ko',region:catalog[0].region,category:'walk',durationMinutes:'20',costAmount:'0',currency:'KRW',title:'로컬 원문',description:'로컬 설명',place:'직접 선택한 장소',tip:'개인 확인',points:[{id:'stable-point',text:'직접 확인하기'}]};
+  const first=makeUnitDraft(input,{draftId:'author-draft'});
+  let state=publishUnitDraft(initialState(),first,{newUnitId:'author-unit',versionId:'author-v1'});
+  state=saveUnitDraft(state,draftFromLatest(state,'author-unit','author-v2-draft'));
+  const parsed=parseBackup(createBackup(state,options));
+  assert.deepEqual(parsed.state,state); assert.equal(parsed.preview.localUnitCount,1); assert.equal(parsed.preview.draftCount,1);
 });

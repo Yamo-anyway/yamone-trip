@@ -1,4 +1,4 @@
-import { assertState, initialState } from '../src/domain.js';
+import { assertState, initialState, migrateState } from '../src/domain.js';
 
 // Separate namespace: browser data is never silently imported or erased.
 export const NATIVE_STORAGE_KEY = 'yamone-trip:native:state:v1';
@@ -25,7 +25,7 @@ export class NativeRepository {
       this.ready = false;
       try {
         const raw = await this.storage.getItem(NATIVE_STORAGE_KEY);
-        const state = raw === null ? initialState() : assertState(JSON.parse(raw));
+        const state = raw === null ? initialState() : migrateState(JSON.parse(raw));
         this.raw = raw;
         this.state = copy(state);
         this.ready = true;

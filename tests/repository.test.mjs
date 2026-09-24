@@ -9,3 +9,19 @@ test('future schema is preserved',()=>{const storage=memory();storage.setItem(ST
 test('quota errors are surfaced rather than reported as saved',()=>{const repo=new LocalRepository({getItem:()=>null,setItem:()=>{throw new Error('quota');}});assert.throws(()=>repo.save(initialState()),/storageError/);});
 test('invalid state never reaches storage',()=>{const storage=memory(),repo=new LocalRepository(storage);assert.throws(()=>repo.save({}));assert.equal(storage.getItem(STORAGE_KEY),null);});
 test('stale tab cannot overwrite a previously saved tab',()=>{const storage=memory(),a=new LocalRepository(storage),b=new LocalRepository(storage);const first=a.load(),second=b.load();first.preference='ko';a.save(first);second.preference='en';assert.throws(()=>b.save(second),/storageError/);assert.equal(new LocalRepository(storage).load().preference,'ko');});
+test('schema 1 state migrates in memory and is rewritten only after an explicit save',()=>{
+  const storage=memory();
+  const legacy={...initialState(),schemaVersion:1};
+  delete legacy.localUnits;
+  delete legacy.unitDrafts;
+  const raw=JSON.stringify(legacy);
+  storage.setItem(STORAGE_KEY,raw);
+  const repo=new LocalRepository(storage);
+  const loaded=repo.load();
+  assert.equal(loaded.schemaVersion,2);
+  assert.deepEqual(loaded.localUnits,[]);
+  assert.deepEqual(loaded.unitDrafts,[]);
+  assert.equal(storage.getItem(STORAGE_KEY),raw);
+  repo.save(loaded);
+  assert.equal(JSON.parse(storage.getItem(STORAGE_KEY)).schemaVersion,2);
+});

@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.6.0 — 2026-09-25
+
+- M04: added native private local-unit drafts and immutable authored versions. The editor accepts an explicit original locale, title/details and 1–5 experience points without creating an account or public post.
+- Experience-point IDs remain stable across later versions, the original locale is immutable, and each saved version is appended sequentially. Existing trip items keep their exact scheduled snapshot when a newer unit version is saved.
+- Added local/unverified/source labels, draft resume/delete confirmation and “create next version” flows in Korean and English. Translation and derivative creation are deliberately separate future milestones.
+- State schema v2 stores local units and drafts. Schema-v1 data migrates in memory and is rewritten only after an explicit user write; v1 backups still import through the existing validated preview/confirmation path. Backups now preserve drafts and immutable authored histories.
+- Validation: `npm test` **80/80 passed**; `npm run check` passed; Android Metro/Hermes bundle passed (611 modules); offline Android source prebuild passed with v0.6.0/code 6 and source-level permission removals. `npm run test:ui` was attempted and blocked before launch by missing Chromium; it covers only the retained web reference. APK assembly could not proceed because the Gradle distribution is unavailable in the restricted environment, and no Android SDK/adb or compiler toolchain is available. No APK, merged manifest or native UI/device pass is claimed.
+
 ## 0.5.0 — 2026-09-25
 
 - M03: added explicit Android local backup export and import through system file/directory pickers. The app does not upload or automatically share backup files.

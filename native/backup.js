@@ -1,4 +1,4 @@
-import { assertState, SCHEMA_VERSION } from '../src/domain.js';
+import { assertState, migrateState, SCHEMA_VERSION } from '../src/domain.js';
 
 export const BACKUP_FORMAT = 'yamone-trip-local-backup';
 export const BACKUP_FORMAT_VERSION = 1;
@@ -38,13 +38,25 @@ function cleanUnit(unit) {
   };
 }
 
-/** Rebuild only schema-v1 fields so imported unknown data is never persisted. */
+function cleanDraft(draft) {
+  return {
+    id:draft.id, unitId:draft.unitId, baseVersionId:draft.baseVersionId, visibility:'private',
+    sourceLocale:draft.sourceLocale,
+    region:{country:draft.region.country, city:draft.region.city, district:draft.region.district},
+    category:draft.category, transport:draft.transport, durationMinutes:draft.durationMinutes,
+    cost:{amount:draft.cost.amount, currency:draft.cost.currency}, title:draft.title,
+    description:draft.description, place:draft.place, tip:draft.tip,
+    points:draft.points.map(point=>({id:point.id,text:point.text})),
+  };
+}
+
+/** Rebuild only known schema fields so imported unknown data is never persisted. */
 export function canonicalState(value) {
-  assertState(value);
+  const current=migrateState(value);
   const state = {
     schemaVersion:SCHEMA_VERSION,
-    preference:value.preference,
-    trips:value.trips.map(trip => ({
+    preference:current.preference,
+    trips:current.trips.map(trip => ({
       id:trip.id, name:trip.name, startDate:trip.startDate, endDate:trip.endDate,
       region:{country:trip.region.country, city:trip.region.city, district:trip.region.district},
       visibility:'private',
@@ -54,11 +66,15 @@ export function canonicalState(value) {
         unitId:item.unitId, unitVersionId:item.unitVersionId, snapshot:cleanUnit(item.snapshot),
       })),
     })),
-    records:Object.fromEntries(Object.entries(value.records).map(([id, record]) => [id, {
+    records:Object.fromEntries(Object.entries(current.records).map(([id, record]) => [id, {
       scheduleItemId:record.scheduleItemId, unitVersionId:record.unitVersionId,
       checkedIds:[...record.checkedIds], note:record.note, status:record.status,
       verification:'self_reported',
     }])),
+    localUnits:current.localUnits.map(local=>({
+      id:local.id, visibility:'private', versions:local.versions.map(cleanUnit),
+    })),
+    unitDrafts:current.unitDrafts.map(cleanDraft),
   };
   assertState(state);
   return state;
@@ -89,6 +105,7 @@ export function backupPreview(state, metadata = {}) {
     source:metadata.source ?? 'backup_v1', createdAt:metadata.createdAt ?? null,
     appVersion:metadata.appVersion ?? null, preference:state.preference,
     tripCount:state.trips.length, itemCount, recordCount:Object.keys(state.records).length,
+    localUnitCount:state.localUnits.length, draftCount:state.unitDrafts.length,
   };
 }
 
@@ -104,10 +121,11 @@ export function parseBackup(text) {
       const state = canonicalState(value.state);
       return {state:copy(state), preview:backupPreview(state, {createdAt:value.createdAt, appVersion:value.appVersion})};
     }
-    // Explicit import path for the old raw schema-v1 local export/browser transfer.
-    if (value?.schemaVersion === SCHEMA_VERSION) {
+    // Explicit import path for raw local/browser state. Schema v1 migrates in memory.
+    if ([1,SCHEMA_VERSION].includes(value?.schemaVersion)) {
       const state = canonicalState(value);
-      return {state:copy(state), preview:backupPreview(state, {source:'legacy_raw_v1'})};
+      const source=value.schemaVersion===1?'legacy_raw_v1':'raw_state_v2';
+      return {state:copy(state), preview:backupPreview(state, {source})};
     }
     throw new Error('backupVersion');
   } catch (error) {

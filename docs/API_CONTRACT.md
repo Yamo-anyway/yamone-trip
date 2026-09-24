@@ -1,12 +1,20 @@
-# Future API contract — proposal v0.2
+# Future API contract — proposal v0.3
 
 This is a handoff proposal, not a deployed API or a backend implementation. All UI data currently comes from local fixtures/storage. `src/api.js` is disabled by default and is not imported by the UI. `src/contracts.d.ts` defines matching data shapes without requiring a TypeScript build.
 
-## Native boundary — v0.5.0
+## Native boundary — v0.6.0
 
 The primary client is now the Android native app in `native/`; the web UI is a retained reference only. Native screens do not import `src/api.js` or any remote transport. `NativeRepository` uses an injected asynchronous key/value interface (`getItem`, `setItem`) with one application-scoped writer, validated reads and serialized transactions. Preferences must preserve all trips, snapshots and records. Failed/ambiguous writes require reload; parse/schema errors must never become empty-state writes. This is local sequencing, NOT an atomic multi-process or server revision protocol.
 
 The app uses `yamone-trip:native:state:v1`, distinct from browser storage. No automatic browser-data migration is performed. Backup import validates all content and presents an explicit preview/confirmation. AsyncStorage is unencrypted and must not contain credentials. The Android app configuration disables OS backup, but the merged release manifest and actual device behavior still require verification before any privacy/release claim. Browser CSP guards only the legacy browser reference; it is not the native network boundary. Do not add an endpoint, login, live translator, background synchronization or OTA update service during this migration.
+
+### M04 local authoring boundary
+
+Local authoring creates private device-only drafts and immutable `UnitVersion` records. A new unit starts with one original locale and 1–5 experience points. Point IDs are generated once and remain stable when text changes or a later version is created; newly added points receive new IDs. The original locale cannot change across versions. Saving a version removes its draft, appends the next sequential version and never rewrites a version already embedded in a trip item.
+
+`sourceType: user_authored`, `author: local-device`, local IDs, seed growth and the UI's “unverified/local” labels are client placeholders only. They are not server authorship, ownership, publication, factual review, attendance or growth evidence. The local editor does not create translations or derivatives. A future server must issue authoritative identities, authorize authorship, define draft/revision conflicts and decide how local histories reconcile without trusting client-supplied author or growth fields.
+
+The proposed future create/version payload may reuse `UnitVersion` content fields but must exclude client authority fields (`author`, `growth`, server version numbers). It must carry an idempotency key and an explicit base version/revision for later versions. Publication is a separate future decision; a local save must never be reported as public.
 
 ### M03 backup/import boundary
 
@@ -72,7 +80,7 @@ Expected error families: 400/422 validation, 401 reauthenticate, 403 owner/permi
 
 ## Later content endpoints — design slots, not ready implementations
 
-Author draft/create/edit version, improvement proposal, attributed derivative, and translation request/read will be specified with those client milestones. A derivative gets a new unit ID and explicit source unit/version attribution. A translation shares the original unit/version and maps stable point IDs; it never becomes a new derivative. Preserve original-language text. Machine translation must be labeled and have an original toggle. Only public unit text should enter translation by default; exclude private trip records and account data.
+Improvement proposal, attributed derivative, and translation request/read will be specified with those client milestones. Local author/version behavior is defined above but no endpoint is active. A derivative gets a new unit ID and explicit source unit/version attribution. A translation shares the original unit/version and maps stable point IDs; it never becomes a new derivative. Preserve original-language text. Machine translation must be labeled and have an original toggle. Only public unit text should enter translation by default; exclude private trip records and account data.
 
 Growth promotion must be computed by the server from authorized, abuse-resistant events. Do not trust client completion as proof of attendance; no thresholds beyond confirmed product rules may be invented. Rights/privacy removals must propagate to snapshots and caches as appropriate, despite ordinary version immutability.
 

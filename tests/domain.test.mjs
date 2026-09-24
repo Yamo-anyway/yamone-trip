@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { catalog } from '../src/catalog.js';
-import { dateRange, validDate, createTrip, addItem, findConflicts, createRecord, filterUnits, validateUnit, assertState, initialState } from '../src/domain.js';
+import { dateRange, validDate, createTrip, addItem, findConflicts, createRecord, filterUnits, validateUnit, assertState, initialState, migrateState } from '../src/domain.js';
 import { resolveLocale, textFor, costLabel, dictionaries } from '../src/i18n.js';
 const trip=()=>createTrip({name:' Seoul ',startDate:'2026-10-01',endDate:'2026-10-03',region:catalog[0].region},'trip');
 const add=(t=trip(),id='one',time='09:00',date='2026-10-01')=>addItem(t,catalog[0],{date,startTime:time},id);
@@ -24,3 +24,4 @@ test('state rejects inconsistent derived record status',()=>{const s=initialStat
 test('locale supports explicit settings and safe device fallback',()=>{assert.equal(resolveLocale('auto','ko-KR'),'ko');assert.equal(resolveLocale('en','ko-KR'),'en');assert.equal(resolveLocale('auto','fr-FR'),'en');assert.deepEqual(Object.keys(dictionaries.ko).sort(),Object.keys(dictionaries.en).sort());});
 test('content language fallback and zero cost',()=>{assert.equal(textFor({ko:'원문'},'en','ko'),'원문');assert.equal(costLabel({amount:0,currency:'KRW'},'en'),'Free');});
 test('malformed display fields cannot survive a storage load',()=>{for(const patch of [{cost:null},{region:null},{tip:42},{category:'unknown'},{transport:'teleport'},{version:0}]) {const s=initialState();s.trips=[add()];Object.assign(s.trips[0].items[0].snapshot,patch);assert.throws(()=>assertState(s));}});
+test('schema v1 migrates in memory without inventing authored content',()=>{const old={schemaVersion:1,preference:'ko',trips:[],records:{}};const migrated=migrateState(old);assert.equal(migrated.schemaVersion,2);assert.deepEqual(migrated.localUnits,[]);assert.deepEqual(migrated.unitDrafts,[]);assert.equal(old.schemaVersion,1);});
